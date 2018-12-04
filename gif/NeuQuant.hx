@@ -68,7 +68,7 @@ class NeuQuant {
 
     var alphadec:Int; // Biased by 10 bits
 
-        // Types and Global Variables
+    // Types and Global Variables
 
     var thepicture: UInt8Array;     // The input image itself
     var lengthcount: Int;           // Lengthcount = H*W*3
@@ -106,7 +106,7 @@ class NeuQuant {
     }
 
     public function colormap():UInt8Array
-    {   
+    {
         for(i in 0...netsize) {
             colormap_index[network[i * 4 + 3]] = i;
         }

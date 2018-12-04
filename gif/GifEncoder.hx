@@ -35,29 +35,29 @@ class GifEncoder {
 
     var width: Int;
     var height: Int;
-    var framerate: Float = 24;                 // used if frame.delay < 0
+    var framerate: Float = 24;               // used if frame.delay < 0
     var repeat: Int = -1;                    // -1: infinite, 0: none, >0: repeat count
 
     var colorDepth: Int = 8;                 // Number of bit planes
     var paletteSize: Int = 7;                // Color table size (bits-1)
     var sampleInterval: Int = 10;            // Default sample interval for quantizer
 
-        //caches
+    //caches
     var pixels: UInt8Array;
     var indexedPixels: UInt8Array;           // Converted frame indexed to palette
     var colorTab: UInt8Array;                // RGB palette
     var usedEntry: Array<Bool>;              // Active palette entries
-        //        
+    //
     var nq: NeuQuant;
     var lzwEncoder: LzwEncoder;
-        //internal
+    //internal
     var started: Bool = false;
     var first_frame: Bool = true;
 
-        //:todo: error handling could be better - but throw inside of another thread on cpp is too quiet
-        
-        /** Allows a custom print handler for error messages.
-            Defaults to Sys.println on sys targets, and trace otherwise. */
+    //:todo: error handling could be better - but throw inside of another thread on cpp is too quiet
+
+    /** Allows a custom print handler for error messages.
+        Defaults to Sys.println on sys targets, and trace otherwise. */
     public var print: Dynamic->Void;
 
 // Public API
@@ -86,11 +86,11 @@ class GifEncoder {
         _repeat:Int = GifRepeat.Infinite,
         _quality:Int = 10
     ) {
-        
-        #if sys 
+
+        #if sys
             print = Sys.println;
-        #else 
-            print = function(v) { trace(v); } 
+        #else
+            print = function(v) { trace(v); }
         #end
 
         width = _frame_width;
@@ -140,9 +140,9 @@ class GifEncoder {
         analyze(pixels);
 
         if(first_frame) {
-            
+
             write_palette(output);
-            
+
             if(repeat != GifRepeat.None) {
                 write_NetscapeExt(output);
             }
@@ -213,7 +213,7 @@ class GifEncoder {
             nq.reset(pixels, pixels.length, sampleInterval);
             colorTab = nq.process();
 
-                // Map image pixels to new palette
+            // Map image pixels to new palette
             var k:Int = 0;
             for (i in 0...(width * height)) {
                 var r = pixels[k++] & 0xff;
@@ -227,17 +227,15 @@ class GifEncoder {
         } //analyze
 
     //writers
-        //
 
-            /** Writes Logical Screen Descriptor. */
+        /** Writes Logical Screen Descriptor. */
         function write_LSD(output:BytesOutput) {
-            //
-            
-                // Logical screen size
+
+            // Logical screen size
             output.writeInt16(width);
             output.writeInt16(height);
 
-                // Packed fields
+            // Packed fields
             output.writeByte(0x80 |         // 1   : global color table flag = 1 (gct used)
                              0x70 |         // 2-4 : color resolution = 7
                              0x00 |         // 5   : gct sort flag = 0
@@ -248,7 +246,7 @@ class GifEncoder {
 
         } //write_LSD
 
-            /** Writes Netscape application extension to define repeat count. */
+        /** Writes Netscape application extension to define repeat count. */
         function write_NetscapeExt(output:BytesOutput):Void {
 
             var repeats = repeat;
@@ -266,9 +264,9 @@ class GifEncoder {
 
         } //write_NetscapeExt
 
-            /** Write color table. */
+        /** Write color table. */
         function write_palette(output:BytesOutput):Void {
-            
+
             output.write(colorTab.view.buffer);
 
             var n:Int = (3 * 256) - colorTab.length;
@@ -279,15 +277,15 @@ class GifEncoder {
 
         } //write_palette
 
-            /** Encodes and writes pixel data. */
+        /** Encodes and writes pixel data. */
         function write_pixels(output:BytesOutput):Void {
-        
+
             lzwEncoder.reset(indexedPixels, colorDepth);
             lzwEncoder.encode(output);
-        
+
         } //write_pixels
 
-            /** Writes Image Descriptor. */
+        /** Writes Image Descriptor. */
         function write_image_desc(output:BytesOutput, first:Bool):Void {
 
             output.writeByte(0x2c);         // Image separator
@@ -296,25 +294,25 @@ class GifEncoder {
             output.writeInt16(width);       // Image width
             output.writeInt16(height);      // Image height
 
-                //Write LCT, or GCT
+            //Write LCT, or GCT
 
             if(first) {
 
                 output.writeByte(0);                // No LCT  - GCT is used for first (or only) frame
 
             } else {
-                    
+
                 output.writeByte(0x80 |             // 1 local color table  1=yes
                                     0 |             // 2 interlace - 0=no
                                     0 |             // 3 sorted - 0=no
                                     0 |             // 4-5 reserved
                                     paletteSize);   // 6-8 size of color table
-            
+
             } //else
 
         } //write_image_desc
 
-            /** Writes Graphic Control Extension. Delay is in seconds, floored and converted to 1/100 of a second */
+        /** Writes Graphic Control Extension. Delay is in seconds, floored and converted to 1/100 of a second */
         function write_GraphicControlExt(output:BytesOutput, delay:Float):Void {
 
             output.writeByte(0x21);         // Extension introducer
@@ -327,7 +325,7 @@ class GifEncoder {
                              0 |            // 7   user input - 0 = none
                              0 );           // 8   transparency flag
 
-                //convert to 1/100 sec
+            //convert to 1/100 sec
             var delay_val = Math.floor(delay * 100);
 
             output.writeInt16(delay_val);   // Delay x 1/100 sec
@@ -347,13 +345,13 @@ class GifEncoder {
 
 typedef GifFrame = {
 
-        /** Delay of the frame in seconds. This value gets floored
-            when encoded due to gif format requirements. If this value is negative,
-            the default encoder frame rate will be used. */
+    /** Delay of the frame in seconds. This value gets floored
+        when encoded due to gif format requirements. If this value is negative,
+        the default encoder frame rate will be used. */
     var delay: Float;
-        /** Whether or not this frame should be flipped on the Y axis */
+    /** Whether or not this frame should be flipped on the Y axis */
     var flippedY: Bool;
-        /** Pixels data in unsigned bytes, rgb format */
+    /** Pixels data in unsigned bytes, rgb format */
     var data: UInt8Array;
 
 }
