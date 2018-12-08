@@ -1,0 +1,3 @@
+-main Test.hx
+-js js/Test.js
+-cp ../
