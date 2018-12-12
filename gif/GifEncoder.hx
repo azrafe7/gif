@@ -12,6 +12,12 @@ package gif;
 import haxe.io.UInt8Array;
 import haxe.io.BytesOutput;
 
+enum GifPaletteAnalyzer {
+    AUTO;
+    NEUQUANT(?quality:GifQuality);
+    NAIVE256;
+}
+
 @:enum abstract GifRepeat(Int)
   from Int to Int {
     var None = 0;
@@ -40,7 +46,6 @@ class GifEncoder {
 
     var colorDepth: Int = 8;                 // Number of bit planes
     var paletteSize: Int = 7;                // Color table size (bits-1)
-    var sampleInterval: Int = 10;            // Default sample interval for quantizer
 
     //caches
     var pixels: UInt8Array;
@@ -48,11 +53,12 @@ class GifEncoder {
     var colorTab: UInt8Array;                // RGB palette
     var usedEntry: Array<Bool>;              // Active palette entries
     //
-    var nq: NeuQuant;
     var lzwEncoder: LzwEncoder;
     //internal
     var started: Bool = false;
     var first_frame: Bool = true;
+    var palette_analyzer = null;
+    var palette_analyzer_enum = null;
 
     //:todo: error handling could be better - but throw inside of another thread on cpp is too quiet
 
@@ -72,19 +78,13 @@ class GifEncoder {
 
         repeat:
             Default is 0 (no repeat); -1 means play indefinitely.
-            Use GifRepeat for clarity
-
-        quality:
-            Sets quality of color quantization (conversion of images to
-            the maximum 256 colors allowed by the GIF specification). Lower values (minimum = 1)
-            produce better colors, but slow processing significantly. Higher values will speed
-            up the quantization pass at the cost of lower image quality (maximum = 100). */
+            Use GifRepeat for clarity */
     public function new(
         _frame_width:Int,
         _frame_height:Int,
         _framerate:Float,
         _repeat:Int = GifRepeat.Infinite,
-        _quality:Int = 10
+        ?_palette_analyzer:GifPaletteAnalyzer
     ) {
 
         #if sys
@@ -98,13 +98,28 @@ class GifEncoder {
         framerate = _framerate;
         repeat = _repeat;
 
-        sampleInterval = Std.int(clamp(_quality, 1, 100));
+        var pixelsCount = width * height;
+
+        palette_analyzer = switch (_palette_analyzer)
+        {
+            case AUTO, null:
+                palette_analyzer_enum = pixelsCount <= 256 ? NAIVE256 : NEUQUANT();
+                pixelsCount <= 256 ? new Naive256() : new NeuQuant();
+            case NEUQUANT(q):
+                palette_analyzer_enum = NEUQUANT(q);
+                new NeuQuant(q);
+            case NAIVE256:
+                palette_analyzer_enum = NAIVE256;
+                new Naive256();
+            default:
+                throw "Invalid PaletteAnalyzer";
+        }
+
         usedEntry = [for (i in 0...256) false];
 
         pixels = new UInt8Array(width * height * 3);
         indexedPixels = new UInt8Array(width * height);
 
-        nq = new NeuQuant();
         lzwEncoder = new LzwEncoder();
 
     } //new
@@ -209,9 +224,8 @@ class GifEncoder {
 
         function analyze(pixels:UInt8Array) {
 
-            // Create reduced palette
-            nq.reset(pixels, pixels.length, sampleInterval);
-            colorTab = nq.process();
+            // Create palette
+            colorTab = palette_analyzer.analyze(pixels);
 
             // Map image pixels to new palette
             var k:Int = 0;
@@ -219,7 +233,7 @@ class GifEncoder {
                 var r = pixels[k++] & 0xff;
                 var g = pixels[k++] & 0xff;
                 var b = pixels[k++] & 0xff;
-                var index = nq.map(r, g,b);
+                var index = palette_analyzer.map(r, g, b);
                 usedEntry[index] = true;
                 indexedPixels[i] = index;
             }
@@ -333,12 +347,6 @@ class GifEncoder {
             output.writeByte(0);            // Block terminator
 
         } //write_GraphicControlExt
-
-    /** Clamp a value between a and b and return the clamped version */
-    static inline public function clamp(value:Float, a:Float, b:Float):Float
-    {
-        return ( value < a ) ? a : ( ( value > b ) ? b : value );
-    }
 
 } //GifEncoder
 

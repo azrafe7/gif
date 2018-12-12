@@ -21,10 +21,11 @@ package gif;
  *
  */
 
+import gif.GifEncoder.GifQuality;
 import haxe.io.Int32Array;
 import haxe.io.UInt8Array;
 
-class NeuQuant {
+class NeuQuant implements IPaletteAnalyzer {
 
     inline static var netsize         : Int = 256; // Number of colours used
 
@@ -81,8 +82,21 @@ class NeuQuant {
     var colormap_map: UInt8Array;   // Cached color map array
     var colormap_index: Int32Array; // Cached color map index
 
-    public function new()
+    /** Sets quality of color quantization (conversion of images to
+        the maximum 256 colors allowed by the GIF specification).
+        Lower values (minimum = 1 (GifQuality.Best)) produce better colors,
+        but slow processing significantly. Higher values will speed
+        up the quantization pass at the cost of lower image quality (maximum = 100 (GifQuality.Worst)).
+        Defaults to 10 (GifQuality.VeryHigh). */
+    var quality:GifQuality;
+
+    var sampleInterval:Int;
+
+
+    public function new(?quality:GifQuality)
     {
+        if (quality == null) quality = GifQuality.VeryHigh;
+        sampleInterval = Std.int(clamp(quality, 1, 100));
         netindex = new Int32Array(256);
         bias = new Int32Array(netsize);
         freq = new Int32Array(netsize);
@@ -90,6 +104,12 @@ class NeuQuant {
         network = new Int32Array(netsize * 4);
         colormap_map = new UInt8Array(3 * netsize);
         colormap_index = new Int32Array(netsize);
+    }
+
+    public function analyze(pixels:UInt8Array):UInt8Array
+    {
+        reset(pixels, pixels.length, sampleInterval);
+        return process();
     }
 
     // Reset network in range (0,0,0) to (255,255,255) and set parameters
@@ -536,6 +556,12 @@ class NeuQuant {
         freq[bestpos] += beta;
         bias[bestpos] -= betagamma;
         return bestbiaspos;
+    }
+
+    /** Clamp a value between a and b and return the clamped version */
+    static inline public function clamp(value:Float, a:Float, b:Float):Float
+    {
+        return ( value < a ) ? a : ( ( value > b ) ? b : value );
     }
 
 }

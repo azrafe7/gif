@@ -6,27 +6,30 @@ class Test {
     static var width = 32;
     static var height = 32;
     static var delay = 1;
-    
+    static var numFrames = 5;
+
     static function main() {
 
-        trace("creating test.gif ...");
+        trace("creating test.gif (" + numFrames + " frames) ...");
+        trace("frames' size " + width + "x" + height + " ...");
 
         var output = new haxe.io.BytesOutput();
-        var encoder = new gif.GifEncoder(width, height, 1, GifRepeat.Infinite, GifQuality.High);
+        var palette_analyzer = GifPaletteAnalyzer.AUTO;
+        var encoder = new gif.GifEncoder(width, height, 1, GifRepeat.Infinite, palette_analyzer);
+        var palette_analyzer_enum = palette_analyzer.match(GifPaletteAnalyzer.AUTO) ? " (" + @:privateAccess encoder.palette_analyzer_enum + ")" : "";
+
+        trace("using palette analyzer " + palette_analyzer + palette_analyzer_enum + " ...");
 
         encoder.start(output);
 
-            //add 4 frames of random colors
-        encoder.add(output, make_frame());
-        encoder.add(output, make_frame());
-        encoder.add(output, make_frame());
-        encoder.add(output, make_frame());
+        //add `numFrames` frames
+        for (i in 0...numFrames) encoder.add(output, make_frame());
 
         encoder.commit(output);
 
         var bytes = output.getBytes();
 
-    #if sys
+    #if (sys || nodejs)
         sys.io.File.saveBytes("test.gif", bytes);
     #elseif js
         var imageElement :js.html.ImageElement = cast js.Browser.document.createElement("img");
@@ -40,11 +43,18 @@ class Test {
 
     } //main
 
+    static var count = 0;
     static function make_frame() {
 
-        var red = Std.random(255);
-        var blue = Std.random(255);
-        var green = Std.random(255);
+        var val   = 255;
+        var red   = count % 3 == 0 ? val : 0; // Std.random(255);
+        var green = count % 3 == 1 ? val : 0; // Std.random(255);
+        var blue  = count % 3 == 2 ? val : 0; // Std.random(255);
+        count++;
+
+        //var red   = Std.random(255);
+        //var green = Std.random(255);
+        //var blue  = Std.random(255);
 
         var pixels = new haxe.io.UInt8Array(width * height * 3);
         for(i in 0 ... width * height) {
