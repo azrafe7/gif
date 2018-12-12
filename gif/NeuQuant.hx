@@ -310,8 +310,8 @@ class NeuQuant implements IPaletteAnalyzer {
         }
     }
 
-    // Search for BGR values 0..255 (after net is unbiased) and return colour index
-    public function map(b:Int, g:Int, r:Int):Int
+    // Search for RGB values 0..255 (after net is unbiased) and return colour index
+    public function map(r:Int, g:Int, b:Int):Int
     {
         var i:Int;
         var j:Int;
@@ -340,7 +340,7 @@ class NeuQuant implements IPaletteAnalyzer {
                     if (dist < 0)
                         dist = -dist;
 
-                    a = network[i*4 + 0] - b;
+                    a = network[i*4 + 0] - r;
 
                     if (a < 0)
                         a = -a;
@@ -349,7 +349,7 @@ class NeuQuant implements IPaletteAnalyzer {
 
                     if (dist < bestd)
                     {
-                        a = network[i*4 + 2] - r;
+                        a = network[i*4 + 2] - b;
 
                         if (a < 0)
                             a = -a;
@@ -380,7 +380,7 @@ class NeuQuant implements IPaletteAnalyzer {
                     if (dist < 0)
                         dist = -dist;
 
-                    a = network[j*4 + 0] - b;
+                    a = network[j*4 + 0] - r;
 
                     if (a < 0)
                         a = -a;
@@ -389,7 +389,7 @@ class NeuQuant implements IPaletteAnalyzer {
 
                     if (dist < bestd)
                     {
-                        a = network[j*4 + 2] - r;
+                        a = network[j*4 + 2] - b;
 
                         if (a < 0)
                             a = -a;
