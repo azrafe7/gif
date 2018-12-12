@@ -51,7 +51,6 @@ class GifEncoder {
     var pixels: UInt8Array;
     var indexedPixels: UInt8Array;           // Converted frame indexed to palette
     var colorTab: UInt8Array;                // RGB palette
-    var usedEntry: Array<Bool>;              // Active palette entries
     //
     var lzwEncoder: LzwEncoder;
     //internal
@@ -114,8 +113,6 @@ class GifEncoder {
             default:
                 throw "Invalid PaletteAnalyzer";
         }
-
-        usedEntry = [for (i in 0...256) false];
 
         pixels = new UInt8Array(width * height * 3);
         indexedPixels = new UInt8Array(width * height);
@@ -234,7 +231,6 @@ class GifEncoder {
                 var g = pixels[k++] & 0xff;
                 var b = pixels[k++] & 0xff;
                 var index = palette_analyzer.map(r, g, b);
-                usedEntry[index] = true;
                 indexedPixels[i] = index;
             }
 
