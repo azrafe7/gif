@@ -20,12 +20,16 @@ class Test {
 
         trace("using palette analyzer " + palette_analyzer + palette_analyzer_enum + " ...");
 
+        var t0 = haxe.Timer.stamp();
+
         encoder.start(output);
 
         //add `numFrames` frames
         for (i in 0...numFrames) encoder.add(output, make_frame());
 
         encoder.commit(output);
+
+        trace("elapsed " + (haxe.Timer.stamp() - t0) + "s");
 
         var bytes = output.getBytes();
 
