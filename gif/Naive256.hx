@@ -8,7 +8,6 @@ import haxe.io.UInt8Array;
     (assuming unique colors to be <= 256). */
 class Naive256 implements IPaletteAnalyzer
 {
-    var indexedPixels:Array<Int> = [];
     var rgb2index = new Map<Int, Int>(); // maps rgb to index
 
     public function new() { }
@@ -21,7 +20,7 @@ class Naive256 implements IPaletteAnalyzer
         // analyze pixels
         var nextIndex = 0;
         var k = 0;
-        for (i in 0...pixels.length)
+        for (i in 0...Std.int(pixels.length / 3))
         {
             var rgb = (pixels[k++] << 16) | (pixels[k++] << 8) | pixels[k++];
             var index = rgb2index[rgb];
@@ -30,13 +29,13 @@ class Naive256 implements IPaletteAnalyzer
                 rgb2index[rgb] = index;
                 index2rgb[index] = rgb;
             }
-            indexedPixels[i] = index;
         }
 
         var colorTab = new UInt8Array(nextIndex * 3);
 
         // build color table
         k = 0;
+        if (index2rgb.length > 256) throw "More than 256 unique colors (" + index2rgb.length + " found)";
         for (rgb in index2rgb) {
             colorTab[k++] = (rgb >> 16) & 0xFF;
             colorTab[k++] = (rgb >> 8) & 0xFF;
