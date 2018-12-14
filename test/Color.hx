@@ -48,15 +48,20 @@ class Color {
         return (rgb.r << 16) | (rgb.g << 8) | rgb.b;
     } // rgbToInt
 
-    static public function createGradient(rgbColors:Array<Int>, steps:Array<Int>):Array<Int> {
+    // Ex.: createGradient([0xFF0000, 0x00FF00, 0x0000FF], [128, 128]) returns a gradient made up of 128 * 2 colors,
+    // going from red to green to blue, with full green in the middle.
+    // Interpolation is applied in the HSL color space, with the hue following the shortest path to target.
+    static public function createGradient(rgbStopColors:Array<Int>, steps:Array<Int>):Array<Int> {
         var gradient = [];
-        for(i in 0...rgbColors.length - 1) {
-            var rgb = intToRgb(rgbColors[i]);
+        for(i in 0...rgbStopColors.length - 1) {
+            var rgb = intToRgb(rgbStopColors[i]);
             var startHsl = rgbToHsl(rgb);
-            rgb = intToRgb(rgbColors[i + 1]);
+            rgb = intToRgb(rgbStopColors[i + 1]);
             var endHsl = rgbToHsl(rgb);
 
-            var currSteps = steps[i];
+            var offsetStep = 1;
+            if (i == 0) offsetStep = 0;
+            var currSteps = offsetStep + steps[i];
 
             var diffH = (endHsl.h - startHsl.h) % 360;
             var shortestH = (2 * diffH) % 360 - diffH;
@@ -65,8 +70,7 @@ class Color {
             var stepS = (endHsl.s - startHsl.s) / (currSteps - 1);
             var stepL = (endHsl.l - startHsl.l) / (currSteps - 1);
 
-            for(step in 0...currSteps)
-            {
+            for(step in offsetStep...currSteps) {
                 var interpolatedHsl:Color.HSL = {
                     h: (360 + startHsl.h + (stepH * step)) % 360,
                     s: startHsl.s + (stepS * step),
