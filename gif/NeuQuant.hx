@@ -146,7 +146,6 @@ class NeuQuant implements IPaletteAnalyzer {
     // Insertion sort of network and building of netindex[0..255] (to do after unbias)
     public function inxbuild():Void
     {
-        var i:Int;
         var j:Int;
         var smallpos:Int;
         var smallval:Int;
@@ -502,9 +501,7 @@ class NeuQuant implements IPaletteAnalyzer {
         // For frequently chosen neurons, freq[i] is high and bias[i] is negative
         // bias[i] = gamma*((1/netsize)-freq[i])
 
-        var i:Int;
         var dist:Int;
-        var a:Int;
         var biasdist:Int;
         var betafreq:Int;
         var bestpos:Int;
