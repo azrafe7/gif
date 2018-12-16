@@ -53,15 +53,15 @@ class MedianCut implements IPaletteAnalyzer
   /* Functions for converting between (r,g,b)-colors and 15-bit     */
   /* colors follow.                                              */
   static function RGB15(r, g, b):Int return /*(word)*/ (((b) & ~7) << 7) | (((g) & ~7) << 2) | ((r) >> 3);
-  static function RED(x):Int   return /*(byte)*/ (((x) & 31) << 3);
-  static function GREEN(x):Int return /*(byte)*/ ((((x) >> 5) & 255) << 3);
-  static function BLUE(x):Int  return /*(byte)*/ ((((x) >> 10) & 255) << 3);
-	static function RGB24_TO_RGB15(x):Int {
-		var r = (x & 0xFF0000) >> 16;
-		var g = (x & 0x00FF00) >> 8;
-		var b = (x & 0x0000FF);
-		return RGB15(r, g, b);
-	}
+  static function RED(x):Int   return /*(byte)*/ (((x) & 31) << 3) & 255;
+  static function GREEN(x):Int return /*(byte)*/ ((((x) >> 5) & 255) << 3) & 255;
+  static function BLUE(x):Int  return /*(byte)*/ ((((x) >> 10) & 255) << 3) & 255;
+  static public function RGB24_TO_RGB15(x):Int {
+    var r = (x & 0xFF0000) >> 16;
+    var g = (x & 0x00FF00) >> 8;
+    var b = (x & 0x0000FF);
+    return RGB15(r, g, b);
+  }
 
   static var /*cube_t[MAXCOLORS]*/ list:Array<Cube> = [for (c in 0...MAXCOLORS) null];   /* list of cubes              */
   static var longdim:Int;              /* longest dimension of cube  */
@@ -78,9 +78,8 @@ class MedianCut implements IPaletteAnalyzer
     this.height = height;
 
     var rgb = 0;
-    for (px in pixels) {
-      rgb = RGB24_TO_RGB15(px);
-      trace(StringTools.hex(px, 6), StringTools.hex(rgb, 6));
+    for (i in 0...width*height) {
+      rgb = RGB24_TO_RGB15(pixels[i]);
       histogram[rgb]++;
     }
   }
@@ -106,9 +105,9 @@ class MedianCut implements IPaletteAnalyzer
     var /*byte  */ lr,lg,lb;
     var /*word  */ median,color;
     var /*dword */ count;
-    var /*int   */ k,level,ncubes,splitpos;
+    var /*int   */ level,ncubes,splitpos;
     var /*void *base */ baseIdx:Int;
-    var /*size_t*/ num,width;
+    var /*size_t*/ num;
     var /*cube_t*/ cube:Cube = new Cube(), cubeA:Cube, cubeB:Cube;
 
     /* Create the initial cube, which is the whole RGB-cube. */
@@ -145,7 +144,7 @@ class MedianCut implements IPaletteAnalyzer
       /* Must split the cube "splitpos" in list of cubes. Next, find longest
       ** dimension of cube, and update external variable "longdim" which is
       ** used by sort routine so that it knows along which axis to sort. */
-      cube = list[splitpos].clone();
+      cube = list[splitpos];
       lr = cube.rmax - cube.rmin;
       lg = cube.gmax - cube.gmin;
       lb = cube.bmax - cube.bmin;
@@ -155,12 +154,11 @@ class MedianCut implements IPaletteAnalyzer
 
       /* Sort along "longdim". This prepares for the next step, namely finding
       ** median. Use standard lib's "qsort". */
-      baseIdx = /*(void *)& */ HistPtr[cube.lower];
+      baseIdx = /*(void *)& */ cube.lower;
       num  = /*(size_t)*/ (cube.upper - cube.lower + 1);
-      width = /*(size_t)sizeof(HistPtr[0])*/ 1;
 
       //qsort(base, num, width, compare);
-      @:privateAccess ArraySort.rec(Hist, compare, baseIdx, num);
+      @:privateAccess ArraySort.rec(HistPtr, compare, baseIdx, num);
 
 
       /* Find median by scanning through cube, computing a running sum. When
@@ -168,9 +166,7 @@ class MedianCut implements IPaletteAnalyzer
       count = 0;
       var i = cube.lower;
       while (i < cube.upper){
-        if (count >= cube.count / 2) {
-          break;
-        }
+        if (count >= Std.int(cube.count / 2)) break;
         color = HistPtr[i];
         count = count + Hist[color];
         i++;
@@ -232,10 +228,10 @@ class MedianCut implements IPaletteAnalyzer
     ** loads histogram with indices into the color map. A preprocessor directive
     ** #define FAST_REMAP controls whether cube centroids become output color
     ** for all the colors in a cube, or whether a "best remap" is followed. */
-    var /*byte  */ r,g,b;
-    var /*word  */ i,j,k,index = 0,color;
-    var /*float */ rsum:Float,gsum:Float,bsum:Float;
-    var /*float */ dr:Float,dg:Float,db:Float,d:Float,dmin:Float;
+    var /*byte  */ r = 0.0, g = 0.0, b = 0.0;
+    var /*word  */ index = 0, color = 0;
+    var /*float */ rsum = 0.0, gsum = 0.0, bsum = 0.0;
+    var /*float */ dr = 0.0, dg = 0.0, db = 0.0, d = 0.0, dmin = 0.0;
     var /*cube_t*/ cube:Cube;
 
     for (k in 0...ncubes){
