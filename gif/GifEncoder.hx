@@ -113,7 +113,7 @@ class GifEncoder {
                 new Naive256();
             case GifPaletteAnalyzer.MEDIANCUT(maxColors):
                 palette_analyzer_enum = MEDIANCUT(maxColors);
-                new MedianCutWrapper(maxColors);
+                new MedianCut(maxColors);
             default:
                 throw "Invalid PaletteAnalyzer";
         }
