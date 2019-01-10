@@ -106,7 +106,7 @@ class NeuQuant implements IPaletteAnalyzer {
         colormap_index = new Int32Array(netsize);
     }
 
-    public function analyze(pixels:UInt8Array):UInt8Array
+    public function buildPalette(pixels:UInt8Array):UInt8Array
     {
         reset(pixels, pixels.length, sampleInterval);
         return process();

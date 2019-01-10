@@ -226,7 +226,7 @@ class GifEncoder {
         function analyze(pixels:UInt8Array) {
 
             // Create palette
-            colorTab = palette_analyzer.analyze(pixels);
+            colorTab = palette_analyzer.buildPalette(pixels);
 
             // Map image pixels to new palette
             var k:Int = 0;

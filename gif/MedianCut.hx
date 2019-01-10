@@ -84,7 +84,7 @@ class MedianCut implements IPaletteAnalyzer
     this.fastRemap = fastRemap;
   }
 
-  public function analyze(pixels:UInt8Array):UInt8Array
+  public function buildPalette(pixels:UInt8Array):UInt8Array
   {
     var pixelCount = Std.int(pixels.length / 3);
     var pixelArray:Array<Int> = [];

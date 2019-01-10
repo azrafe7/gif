@@ -12,7 +12,7 @@ class Naive256 implements IPaletteAnalyzer
 
     public function new() { }
 
-    public function analyze(pixels:UInt8Array):UInt8Array
+    public function buildPalette(pixels:UInt8Array):UInt8Array
     {
         rgb2index = new Map<Int, Int>(); // maps rgb to index
         var index2rgb = []; // reverse look-up
