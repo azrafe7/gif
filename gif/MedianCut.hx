@@ -72,14 +72,16 @@ class MedianCut implements IPaletteAnalyzer
   var histogram:Array<Int> = [for (i in 0...HSIZE) 0];
 
   var maxColors:Int;
-  var rgbMap:Map<Int, Int>;
+  var fastRemap:Bool;
+
   var rgb2index = new Map<Int, Int>(); // maps rgb to index
 
 
-  public function new(?maxColors:Int)
+  public function new(?maxColors:Int, ?fastRemap:Bool = true)
   {
     this.maxColors = (maxColors != null) ? maxColors : 256;
     if (this.maxColors < 1 || this.maxColors > 256) throw "maxColors must be in the range [1-256]";
+    this.fastRemap = fastRemap;
   }
 
   public function analyze(pixels:UInt8Array):UInt8Array
@@ -104,7 +106,7 @@ class MedianCut implements IPaletteAnalyzer
 
     // run the medianCut algorithm
     // numColors will be the size of the quantized palette (might be less than maxColors)
-    var numColors = medianCut(histogram, colorMap, maxColors);
+    var numColors = medianCut(histogram, colorMap, maxColors, fastRemap);
 
     // map original pixels to indices in the quantized palette
     rgb2index = new Map();
@@ -132,7 +134,7 @@ class MedianCut implements IPaletteAnalyzer
     return rgb2index[rgb];
   }
 
-  /*word*/ public function medianCut(/*word[]*/ hist:Array<Int>, /*byte[][3]*/ colorMap:Array<Array<Int>>, maxCubes:Int):Int
+  /*word*/ public function medianCut(/*word[]*/ hist:Array<Int>, /*byte[][3]*/ colorMap:Array<Array<Int>>, maxCubes:Int, fastRemap:Bool):Int
   {
     /* Accepts "hist", a 32,768-element array that contains 15-bit color counts
     ** of input image. Uses Heckbert's median-cut algorithm to divide color
@@ -230,7 +232,7 @@ class MedianCut implements IPaletteAnalyzer
 
     /* We have enough cubes, or we have split all we can. Now compute the color
     ** map, inverse color map, and return number of colors in color map. */
-    invMap(hist, colorMap, nCubes);
+    invMap(hist, colorMap, nCubes, fastRemap);
     return(/*(word)*/nCubes);
   }
 
@@ -259,12 +261,12 @@ class MedianCut implements IPaletteAnalyzer
     }
   }
 
-  function invMap(/*word **/ hist:Array<Int>, /*byte[][3]*/ colorMap:Array<Array<Int>>, /*word*/ nCubes:Int):Void
+  function invMap(/*word **/ hist:Array<Int>, /*byte[][3]*/ colorMap:Array<Array<Int>>, /*word*/ nCubes:Int, fastRemap:Bool):Void
   {
     /* For each cube in list of cubes, computes centroid (average value) of
     ** colors enclosed by that cube, and loads centroids in the color map. Next
-    ** loads histogram with indices into the color map. A preprocessor directive
-    ** #define FAST_REMAP controls whether cube centroids become output color
+    ** loads histogram with indices into the color map.
+    ** "fastRemap" controls whether cube centroids become output color
     ** for all the colors in a cube, or whether a "best remap" is followed. */
     var /*byte  */ r = 0.0, g = 0.0, b = 0.0;
     var /*word  */ index = 0, color = 0;
@@ -290,47 +292,50 @@ class MedianCut implements IPaletteAnalyzer
       colorMap[k][1] = /*(byte)*/Std.int((gsum / /*(float)*/cube.count));
       colorMap[k][2] = /*(byte)*/Std.int((bsum / /*(float)*/cube.count));
     }
-  #if FAST_REMAP
-    /* Fast remap: for each color in each cube, load the corresponding slot
-    ** in "hist" with the centroid of the cube. */
-    for (k in 0...nCubes){
-      cube = list[k];
-      for (i in cube.lower...cube.upper + 1){
-        color = histPtr[i];
-        hist[color] = k;
-      }
-
-      //if ((k % 10) == 0) fprintf(stderr,".");   /* pacifier    */
-    }
-  #else
-    /* Best remap: for each color in each cube, find entry in colorMap that has
-    ** smallest Euclidian distance from color. Record this in "hist". */
-    for (k in 0...nCubes){
-      cube = list[k];
-      for (i in cube.lower...cube.upper + 1){
-        color = histPtr[i];
-        r = RED(color);  g = GREEN(color); b = BLUE(color);
-
-        /* Search for closest entry in "colorMap" */
-        //dmin = (float)FLT_MAX;
-        dmin = Math.POSITIVE_INFINITY;
-        for (j in 0...nCubes){
-          dr = /*(float)*/colorMap[j][0] - /*(float)*/r;
-          dg = /*(float)*/colorMap[j][1] - /*(float)*/g;
-          db = /*(float)*/colorMap[j][2] - /*(float)*/b;
-          d = dr*dr + dg*dg + db*db;
-          if (d == /*(float)*/0.0){
-            index = j; break;
-          }
-          else if (d < dmin){
-            dmin = d; index = j;
-          }
+    if (fastRemap) {
+      /* Fast remap: for each color in each cube, load the corresponding slot
+      ** in "hist" with the centroid of the cube. */
+      //trace("FAST_REMAP");
+      for (k in 0...nCubes){
+        cube = list[k];
+        for (i in cube.lower...cube.upper + 1){
+          color = histPtr[i];
+          hist[color] = k;
         }
-        hist[color] = index;
+
+        //if ((k % 10) == 0) fprintf(stderr,".");   /* pacifier    */
       }
-      //if ((k % 10) == 0) fprintf(stderr,".");   /* pacifier    */
+    } else {
+      /* Best remap: for each color in each cube, find entry in colorMap that has
+      ** smallest Euclidian distance from color. Record this in "hist". */
+      //trace("BEST_REMAP");
+      for (k in 0...nCubes){
+        cube = list[k];
+        for (i in cube.lower...cube.upper + 1){
+          color = histPtr[i];
+          r = RED(color);  g = GREEN(color); b = BLUE(color);
+
+          /* Search for closest entry in "colorMap" */
+          //dmin = (float)FLT_MAX;
+          dmin = Math.POSITIVE_INFINITY;
+          for (j in 0...nCubes){
+            dr = /*(float)*/colorMap[j][0] - /*(float)*/r;
+            dg = /*(float)*/colorMap[j][1] - /*(float)*/g;
+            db = /*(float)*/colorMap[j][2] - /*(float)*/b;
+            d = dr*dr + dg*dg + db*db;
+            if (d == /*(float)*/0.0){
+              index = j; break;
+            }
+            else if (d < dmin){
+              dmin = d; index = j;
+            }
+          }
+          hist[color] = index;
+        }
+        //if ((k % 10) == 0) fprintf(stderr,".");   /* pacifier    */
+      }
     }
-  #end
+
     return;
   }
 

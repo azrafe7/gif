@@ -16,7 +16,7 @@ enum GifPaletteAnalyzer {
     AUTO;
     NEUQUANT(?quality:GifQuality);
     NAIVE256;
-    MEDIANCUT(?maxColors:Int);
+    MEDIANCUT(?maxColors:Int, ?fastRemap:Bool);
 }
 
 @:enum abstract GifRepeat(Int)
@@ -111,8 +111,8 @@ class GifEncoder {
             case GifPaletteAnalyzer.NAIVE256:
                 palette_analyzer_enum = NAIVE256;
                 new Naive256();
-            case GifPaletteAnalyzer.MEDIANCUT(maxColors):
-                palette_analyzer_enum = MEDIANCUT(maxColors);
+            case GifPaletteAnalyzer.MEDIANCUT(maxColors, fastRemap):
+                palette_analyzer_enum = MEDIANCUT(maxColors, fastRemap);
                 new MedianCut(maxColors);
             default:
                 throw "Invalid PaletteAnalyzer";
