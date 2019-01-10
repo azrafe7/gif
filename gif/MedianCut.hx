@@ -74,7 +74,7 @@ class MedianCut implements IPaletteAnalyzer
   var maxColors:Int;
   var fastRemap:Bool;
 
-  var rgb2index = new Map<Int, Int>(); // maps rgb to index
+  var rgbToIndex:Map<Int, Int>; // maps rgb to quantized palette index
 
 
   public function new(?maxColors:Int, ?fastRemap:Bool = true)
@@ -86,6 +86,7 @@ class MedianCut implements IPaletteAnalyzer
 
   public function buildPalette(pixels:UInt8Array):UInt8Array
   {
+    rgbToIndex = new Map<Int, Int>(); // maps rgb to index
     var pixelCount = Std.int(pixels.length / 3);
     var pixelArray:Array<Int> = [];
     var pixel15Array:Array<Int> = [];
@@ -110,11 +111,11 @@ class MedianCut implements IPaletteAnalyzer
     //trace("mapped to " + numColors + " colors");
 
     // map original pixels to indices in the quantized palette
-    rgb2index = new Map();
+    rgbToIndex = new Map();
     for (i in 0...pixelCount) {
       rgb15 = pixel15Array[i];
       var colorMapIdx = histogram[rgb15];
-      rgb2index[pixelArray[i]] = colorMapIdx;
+      rgbToIndex[pixelArray[i]] = colorMapIdx;
     }
 
     // build palette
@@ -132,7 +133,7 @@ class MedianCut implements IPaletteAnalyzer
   public function map(r:Int, g:Int, b:Int):Int
   {
     var rgb = r << 16 | g << 8 | b;
-    return rgb2index[rgb];
+    return rgbToIndex[rgb];
   }
 
   /*word*/ public function medianCut(/*word[]*/ hist:Array<Int>, /*byte[][3]*/ colorMap:Array<Array<Int>>, maxCubes:Int, fastRemap:Bool):Int

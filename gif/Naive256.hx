@@ -8,14 +8,15 @@ import haxe.io.UInt8Array;
     (assuming unique colors to be <= 256). */
 class Naive256 implements IPaletteAnalyzer
 {
-    var rgb2index = new Map<Int, Int>(); // maps rgb to index
+    var rgbToIndex:Map<Int, Int>; // maps rgb to quantized palette index
+
 
     public function new() { }
 
     public function buildPalette(pixels:UInt8Array):UInt8Array
     {
-        rgb2index = new Map<Int, Int>(); // maps rgb to index
-        var index2rgb = []; // reverse look-up
+        rgbToIndex = new Map<Int, Int>(); // maps rgb to index
+        var indexToRgb = []; // reverse look-up
 
         // analyze pixels
         var nextIndex = 0;
@@ -23,11 +24,11 @@ class Naive256 implements IPaletteAnalyzer
         for (i in 0...Std.int(pixels.length / 3))
         {
             var rgb = (pixels[k++] << 16) | (pixels[k++] << 8) | pixels[k++];
-            var index = rgb2index[rgb];
+            var index = rgbToIndex[rgb];
             if (index == null) {
                 index = nextIndex++;
-                rgb2index[rgb] = index;
-                index2rgb[index] = rgb;
+                rgbToIndex[rgb] = index;
+                indexToRgb[index] = rgb;
             }
         }
 
@@ -35,8 +36,8 @@ class Naive256 implements IPaletteAnalyzer
 
         // build color table
         k = 0;
-        if (index2rgb.length > 256) throw "More than 256 unique colors (" + index2rgb.length + " found)";
-        for (rgb in index2rgb) {
+        if (indexToRgb.length > 256) throw "More than 256 unique colors (" + indexToRgb.length + " found)";
+        for (rgb in indexToRgb) {
             colorTab[k++] = (rgb >> 16) & 0xFF;
             colorTab[k++] = (rgb >> 8) & 0xFF;
             colorTab[k++] = rgb & 0xFF;
@@ -48,6 +49,6 @@ class Naive256 implements IPaletteAnalyzer
     public function map(r:Int, g:Int, b:Int):Int
     {
         var rgb = r << 16 | g << 8 | b;
-        return rgb2index[rgb];
+        return rgbToIndex[rgb];
     }
 }
