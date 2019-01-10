@@ -1,6 +1,5 @@
 
 import gif.GifEncoder;
-import gif.MedianCut;
 
 using StringTools;
 
@@ -26,7 +25,7 @@ class Test {
 
             var output = new haxe.io.BytesOutput();
             var encoder = new gif.GifEncoder(width, height, 0, GifRepeat.Infinite, palette_analyzer);
-            var analyzer_desc = "" + palette_analyzer;// + (palette_analyzer.match(GifPaletteAnalyzer.AUTO) ? " (" + @:privateAccess encoder.palette_analyzer_enum + ")" : "");
+            var analyzer_desc = "" + palette_analyzer;
 
             var filename = filenameTemplate.replace("$0", Std.string(testNum++)).replace("$1", analyzer_desc);
             trace('creating "' + filename + '" (' + numFrames + ' frames) ...');
