@@ -18,8 +18,8 @@ class Test {
         var testNum = 0;
         for (palette_quantizer in [
             GifPaletteQuantizer.AUTO,
-            GifPaletteQuantizer.NEUQUANT(GifQuality.Best),
-            GifPaletteQuantizer.MEDIANCUT(256, false),
+            GifPaletteQuantizer.NEUQUANT(GifQuality.VeryHigh),
+            GifPaletteQuantizer.MEDIANCUT(50, false),
             GifPaletteQuantizer.NAIVE256])
         {
 

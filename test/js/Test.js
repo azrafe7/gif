@@ -117,17 +117,17 @@ Test.__name__ = true;
 Test.main = function() {
 	var testNum = 0;
 	var _g = 0;
-	var _g1 = [gif_GifPaletteAnalyzer.AUTO,gif_GifPaletteAnalyzer.NEUQUANT(1),gif_GifPaletteAnalyzer.MEDIANCUT(256,false),gif_GifPaletteAnalyzer.NAIVE256];
+	var _g1 = [gif_GifPaletteQuantizer.AUTO,gif_GifPaletteQuantizer.NEUQUANT(10),gif_GifPaletteQuantizer.MEDIANCUT(50,false),gif_GifPaletteQuantizer.NAIVE256];
 	while(_g < _g1.length) {
-		var palette_analyzer = _g1[_g];
+		var palette_quantizer = _g1[_g];
 		++_g;
 		var output = new haxe_io_BytesOutput();
-		var encoder = new gif_GifEncoder(Test.width,Test.height,0,-1,palette_analyzer);
-		var analyzer_desc = "" + Std.string(palette_analyzer);
-		var filename = StringTools.replace(StringTools.replace(Test.filenameTemplate,"$0",Std.string(testNum++)),"$1",analyzer_desc);
+		var encoder = new gif_GifEncoder(Test.width,Test.height,0,-1,palette_quantizer);
+		var quantizer_desc = "" + Std.string(palette_quantizer);
+		var filename = StringTools.replace(StringTools.replace(Test.filenameTemplate,"$0",Std.string(testNum++)),"$1",quantizer_desc);
 		console.log("Test.hx:31:","creating \"" + filename + "\" (" + Test.numFrames + " frames) ...");
 		console.log("Test.hx:32:","frames size " + Test.width + "x" + Test.height + " ...");
-		console.log("Test.hx:34:","using palette analyzer " + analyzer_desc + " ...");
+		console.log("Test.hx:34:","using palette quantizer " + quantizer_desc + " ...");
 		var t0 = new Date().getTime() / 1000;
 		encoder.start(output);
 		var _g2 = 0;
@@ -141,7 +141,7 @@ Test.main = function() {
 		var bytes = output.getBytes();
 		var row = window.document.getElementById("container");
 		var wrapperElement = window.document.createElement("span");
-		wrapperElement.innerText = analyzer_desc;
+		wrapperElement.innerText = quantizer_desc;
 		var imageElement = window.document.createElement("img");
 		imageElement.src = "data:image/gif;base64," + haxe_crypto_Base64.encode(bytes);
 		imageElement.setAttribute("width",Std.string(Test.width * 3));
@@ -175,18 +175,18 @@ Test.make_frame = function() {
 	var frame = { delay : Test.delay, flippedY : false, data : pixels};
 	return frame;
 };
-var gif_GifPaletteAnalyzer = $hxEnums["gif.GifPaletteAnalyzer"] = { __ename__ : true, __constructs__ : ["AUTO","NEUQUANT","NAIVE256","MEDIANCUT"]
-	,AUTO: {_hx_index:0,__enum__:"gif.GifPaletteAnalyzer",toString:$estr}
-	,NEUQUANT: ($_=function(quality) { return {_hx_index:1,quality:quality,__enum__:"gif.GifPaletteAnalyzer",toString:$estr}; },$_.__params__ = ["quality"],$_)
-	,NAIVE256: {_hx_index:2,__enum__:"gif.GifPaletteAnalyzer",toString:$estr}
-	,MEDIANCUT: ($_=function(maxColors,fastRemap) { return {_hx_index:3,maxColors:maxColors,fastRemap:fastRemap,__enum__:"gif.GifPaletteAnalyzer",toString:$estr}; },$_.__params__ = ["maxColors","fastRemap"],$_)
+var gif_GifPaletteQuantizer = $hxEnums["gif.GifPaletteQuantizer"] = { __ename__ : true, __constructs__ : ["AUTO","NEUQUANT","NAIVE256","MEDIANCUT"]
+	,AUTO: {_hx_index:0,__enum__:"gif.GifPaletteQuantizer",toString:$estr}
+	,NEUQUANT: ($_=function(quality) { return {_hx_index:1,quality:quality,__enum__:"gif.GifPaletteQuantizer",toString:$estr}; },$_.__params__ = ["quality"],$_)
+	,NAIVE256: {_hx_index:2,__enum__:"gif.GifPaletteQuantizer",toString:$estr}
+	,MEDIANCUT: ($_=function(maxColors,fastRemap) { return {_hx_index:3,maxColors:maxColors,fastRemap:fastRemap,__enum__:"gif.GifPaletteQuantizer",toString:$estr}; },$_.__params__ = ["maxColors","fastRemap"],$_)
 };
-var gif_GifEncoder = function(_frame_width,_frame_height,_framerate,_repeat,_palette_analyzer) {
+var gif_GifEncoder = function(_frame_width,_frame_height,_framerate,_repeat,_palette_quantizer) {
 	if(_repeat == null) {
 		_repeat = -1;
 	}
-	this.palette_analyzer_enum = null;
-	this.palette_analyzer = null;
+	this.palette_quantizer_enum = null;
+	this.palette_quantizer = null;
 	this.first_frame = true;
 	this.started = false;
 	this.paletteSize = 7;
@@ -201,33 +201,33 @@ var gif_GifEncoder = function(_frame_width,_frame_height,_framerate,_repeat,_pal
 	this.framerate = _framerate;
 	this.repeat = _repeat;
 	var tmp;
-	if(_palette_analyzer == null) {
-		this.palette_analyzer_enum = gif_GifPaletteAnalyzer.AUTO;
+	if(_palette_quantizer == null) {
+		this.palette_quantizer_enum = gif_GifPaletteQuantizer.AUTO;
 		tmp = null;
 	} else {
-		switch(_palette_analyzer._hx_index) {
+		switch(_palette_quantizer._hx_index) {
 		case 0:
-			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.AUTO;
+			this.palette_quantizer_enum = gif_GifPaletteQuantizer.AUTO;
 			tmp = null;
 			break;
 		case 1:
-			var quality = _palette_analyzer.quality;
-			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.NEUQUANT(quality);
+			var quality = _palette_quantizer.quality;
+			this.palette_quantizer_enum = gif_GifPaletteQuantizer.NEUQUANT(quality);
 			tmp = new gif_NeuQuant(quality);
 			break;
 		case 2:
-			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.NAIVE256;
+			this.palette_quantizer_enum = gif_GifPaletteQuantizer.NAIVE256;
 			tmp = new gif_Naive256();
 			break;
 		case 3:
-			var fastRemap = _palette_analyzer.fastRemap;
-			var maxColors = _palette_analyzer.maxColors;
-			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.MEDIANCUT(maxColors,fastRemap);
+			var fastRemap = _palette_quantizer.fastRemap;
+			var maxColors = _palette_quantizer.maxColors;
+			this.palette_quantizer_enum = gif_GifPaletteQuantizer.MEDIANCUT(maxColors,fastRemap);
 			tmp = new gif_MedianCut(maxColors);
 			break;
 		}
 	}
-	this.palette_analyzer = tmp;
+	this.palette_quantizer = tmp;
 	var this1 = new Uint8Array(this.width * this.height * 3);
 	this.pixels = this1;
 	var this2 = new Uint8Array(this.width * this.height);
@@ -301,18 +301,18 @@ gif_GifEncoder.prototype = {
 		return this.pixels;
 	}
 	,analyze: function(pixels) {
-		var _palette_analyzer = this.palette_analyzer;
-		var _palette_analyzer_enum = this.palette_analyzer_enum;
-		if(this.palette_analyzer_enum._hx_index == 0) {
+		var _palette_quantizer = this.palette_quantizer;
+		var _palette_quantizer_enum = this.palette_quantizer_enum;
+		if(this.palette_quantizer_enum._hx_index == 0) {
 			if(pixels.length <= 768 || gif_Tools.histogram(pixels).length <= 256) {
-				_palette_analyzer_enum = gif_GifPaletteAnalyzer.NAIVE256;
-				_palette_analyzer = new gif_Naive256();
+				_palette_quantizer_enum = gif_GifPaletteQuantizer.NAIVE256;
+				_palette_quantizer = new gif_Naive256();
 			} else {
-				_palette_analyzer_enum = gif_GifPaletteAnalyzer.NEUQUANT();
-				_palette_analyzer = new gif_NeuQuant();
+				_palette_quantizer_enum = gif_GifPaletteQuantizer.NEUQUANT();
+				_palette_quantizer = new gif_NeuQuant();
 			}
 		}
-		this.colorTab = _palette_analyzer.buildPalette(pixels);
+		this.colorTab = _palette_quantizer.buildPalette(pixels);
 		var k = 0;
 		var _g1 = 0;
 		var _g2 = this.width * this.height;
@@ -321,7 +321,7 @@ gif_GifEncoder.prototype = {
 			var r = pixels[k++] & 255;
 			var g = pixels[k++] & 255;
 			var b = pixels[k++] & 255;
-			var index = _palette_analyzer.map(r,g,b);
+			var index = _palette_quantizer.map(r,g,b);
 			this.indexedPixels[i] = index & 255;
 		}
 	}
@@ -386,8 +386,8 @@ gif_GifEncoder.prototype = {
 		output.writeByte(0);
 	}
 };
-var gif_IPaletteAnalyzer = function() { };
-gif_IPaletteAnalyzer.__name__ = true;
+var gif_IPaletteQuantizer = function() { };
+gif_IPaletteQuantizer.__name__ = true;
 var gif_LzwEncoder = function() {
 	this.masks = [0,1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535];
 	this.cur_bits = 0;
@@ -585,7 +585,6 @@ var gif_MedianCut = function(maxColors,fastRemap) {
 	if(fastRemap == null) {
 		fastRemap = true;
 	}
-	this.rgb2index = new haxe_ds_IntMap();
 	var _g = [];
 	var _g1 = 0;
 	while(_g1 < 32768) {
@@ -614,7 +613,7 @@ var gif_MedianCut = function(maxColors,fastRemap) {
 	this.fastRemap = fastRemap;
 };
 gif_MedianCut.__name__ = true;
-gif_MedianCut.__interfaces__ = [gif_IPaletteAnalyzer];
+gif_MedianCut.__interfaces__ = [gif_IPaletteQuantizer];
 gif_MedianCut.RGB15 = function(r,g,b) {
 	return (b & -8) << 7 | (g & -8) << 2 | r >> 3;
 };
@@ -635,6 +634,7 @@ gif_MedianCut.RGB24_TO_RGB15 = function(x) {
 };
 gif_MedianCut.prototype = {
 	buildPalette: function(pixels) {
+		this.rgbToIndex = new haxe_ds_IntMap();
 		var pixelCount = pixels.length / 3 | 0;
 		var pixelArray = [];
 		var pixel15Array = [];
@@ -664,14 +664,14 @@ gif_MedianCut.prototype = {
 		}
 		var colorMap = _g2;
 		var numColors = this.medianCut(this.histogram,colorMap,this.maxColors,this.fastRemap);
-		this.rgb2index = new haxe_ds_IntMap();
+		this.rgbToIndex = new haxe_ds_IntMap();
 		var _g5 = 0;
 		var _g6 = pixelCount;
 		while(_g5 < _g6) {
 			var i1 = _g5++;
 			rgb15 = pixel15Array[i1];
 			var colorMapIdx = this.histogram[rgb15];
-			this.rgb2index.h[pixelArray[i1]] = colorMapIdx;
+			this.rgbToIndex.h[pixelArray[i1]] = colorMapIdx;
 		}
 		var this1 = new Uint8Array(numColors * 3);
 		var colorTab = this1;
@@ -688,7 +688,7 @@ gif_MedianCut.prototype = {
 	}
 	,map: function(r,g,b) {
 		var rgb = r << 16 | g << 8 | b;
-		return this.rgb2index.h[rgb];
+		return this.rgbToIndex.h[rgb];
 	}
 	,medianCut: function(hist,colorMap,maxCubes,fastRemap) {
 		var lr;
@@ -931,14 +931,13 @@ gif_MedianCut.prototype = {
 	}
 };
 var gif_Naive256 = function() {
-	this.rgb2index = new haxe_ds_IntMap();
 };
 gif_Naive256.__name__ = true;
-gif_Naive256.__interfaces__ = [gif_IPaletteAnalyzer];
+gif_Naive256.__interfaces__ = [gif_IPaletteQuantizer];
 gif_Naive256.prototype = {
 	buildPalette: function(pixels) {
-		this.rgb2index = new haxe_ds_IntMap();
-		var index2rgb = [];
+		this.rgbToIndex = new haxe_ds_IntMap();
+		var indexToRgb = [];
 		var nextIndex = 0;
 		var k = 0;
 		var _g = 0;
@@ -946,22 +945,22 @@ gif_Naive256.prototype = {
 		while(_g < _g1) {
 			var i = _g++;
 			var rgb = pixels[k++] << 16 | pixels[k++] << 8 | pixels[k++];
-			var index = this.rgb2index.h[rgb];
+			var index = this.rgbToIndex.h[rgb];
 			if(index == null) {
 				index = nextIndex++;
-				this.rgb2index.h[rgb] = index;
-				index2rgb[index] = rgb;
+				this.rgbToIndex.h[rgb] = index;
+				indexToRgb[index] = rgb;
 			}
 		}
 		var this1 = new Uint8Array(nextIndex * 3);
 		var colorTab = this1;
 		k = 0;
-		if(index2rgb.length > 256) {
-			throw new js__$Boot_HaxeError("More than 256 unique colors (" + index2rgb.length + " found)");
+		if(indexToRgb.length > 256) {
+			throw new js__$Boot_HaxeError("More than 256 unique colors (" + indexToRgb.length + " found)");
 		}
 		var _g2 = 0;
-		while(_g2 < index2rgb.length) {
-			var rgb1 = index2rgb[_g2];
+		while(_g2 < indexToRgb.length) {
+			var rgb1 = indexToRgb[_g2];
 			++_g2;
 			colorTab[k++] = rgb1 >> 16 & 255 & 255;
 			colorTab[k++] = rgb1 >> 8 & 255 & 255;
@@ -971,7 +970,7 @@ gif_Naive256.prototype = {
 	}
 	,map: function(r,g,b) {
 		var rgb = r << 16 | g << 8 | b;
-		return this.rgb2index.h[rgb];
+		return this.rgbToIndex.h[rgb];
 	}
 };
 var gif_NeuQuant = function(quality) {
@@ -995,7 +994,7 @@ var gif_NeuQuant = function(quality) {
 	this.colormap_index = this7;
 };
 gif_NeuQuant.__name__ = true;
-gif_NeuQuant.__interfaces__ = [gif_IPaletteAnalyzer];
+gif_NeuQuant.__interfaces__ = [gif_IPaletteQuantizer];
 gif_NeuQuant.clamp = function(value,a,b) {
 	if(value < a) {
 		return a;
