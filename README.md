@@ -20,7 +20,7 @@ Then, add `gif` as a library dependency to your project.
 
 ### Simple usage
 
-See `test/Test.hx` for an example!
+See `test/Test.hx` for an example (or check the [online demo](https://raw.githack.com/azrafe7/gif/master/test/js/index.html)).
 
 ### Helpers
 

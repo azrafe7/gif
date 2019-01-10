@@ -123,11 +123,11 @@ Test.main = function() {
 		++_g;
 		var output = new haxe_io_BytesOutput();
 		var encoder = new gif_GifEncoder(Test.width,Test.height,0,-1,palette_analyzer);
-		var analyzer_desc = Std.string(palette_analyzer) + (palette_analyzer._hx_index == 0 ? " (" + Std.string(encoder.palette_analyzer_enum) + ")" : "");
+		var analyzer_desc = "" + Std.string(palette_analyzer);
 		var filename = StringTools.replace(StringTools.replace(Test.filenameTemplate,"$0",Std.string(testNum++)),"$1",analyzer_desc);
-		console.log("Test.hx:32:","creating \"" + filename + "\" (" + Test.numFrames + " frames) ...");
-		console.log("Test.hx:33:","frames size " + Test.width + "x" + Test.height + " ...");
-		console.log("Test.hx:35:","using palette analyzer " + analyzer_desc + " ...");
+		console.log("Test.hx:31:","creating \"" + filename + "\" (" + Test.numFrames + " frames) ...");
+		console.log("Test.hx:32:","frames size " + Test.width + "x" + Test.height + " ...");
+		console.log("Test.hx:34:","using palette analyzer " + analyzer_desc + " ...");
 		var t0 = new Date().getTime() / 1000;
 		encoder.start(output);
 		var _g2 = 0;
@@ -137,7 +137,7 @@ Test.main = function() {
 			encoder.add(output,Test.make_frame());
 		}
 		encoder.commit(output);
-		console.log("Test.hx:46:","elapsed " + (new Date().getTime() / 1000 - t0) + "s");
+		console.log("Test.hx:45:","elapsed " + (new Date().getTime() / 1000 - t0) + "s");
 		var bytes = output.getBytes();
 		var row = window.document.getElementById("container");
 		var wrapperElement = window.document.createElement("span");
@@ -147,7 +147,7 @@ Test.main = function() {
 		imageElement.setAttribute("width",Std.string(Test.width * 3));
 		row.appendChild(wrapperElement);
 		wrapperElement.appendChild(imageElement);
-		console.log("Test.hx:65:","done.\n");
+		console.log("Test.hx:64:","done.\n");
 	}
 };
 Test.make_frame = function() {
@@ -194,22 +194,21 @@ var gif_GifEncoder = function(_frame_width,_frame_height,_framerate,_repeat,_pal
 	this.repeat = -1;
 	this.framerate = 24;
 	this.print = function(v) {
-		console.log("../gif/GifEncoder.hx:93:",v);
+		console.log("../gif/GifEncoder.hx:97:",v);
 	};
 	this.width = _frame_width;
 	this.height = _frame_height;
 	this.framerate = _framerate;
 	this.repeat = _repeat;
-	var pixelsCount = this.width * this.height;
 	var tmp;
 	if(_palette_analyzer == null) {
-		this.palette_analyzer_enum = pixelsCount <= 256 ? gif_GifPaletteAnalyzer.NAIVE256 : gif_GifPaletteAnalyzer.NEUQUANT();
-		tmp = pixelsCount <= 256 ? new gif_Naive256() : new gif_NeuQuant();
+		this.palette_analyzer_enum = gif_GifPaletteAnalyzer.AUTO;
+		tmp = null;
 	} else {
 		switch(_palette_analyzer._hx_index) {
 		case 0:
-			this.palette_analyzer_enum = pixelsCount <= 256 ? gif_GifPaletteAnalyzer.NAIVE256 : gif_GifPaletteAnalyzer.NEUQUANT();
-			tmp = pixelsCount <= 256 ? new gif_Naive256() : new gif_NeuQuant();
+			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.AUTO;
+			tmp = null;
 			break;
 		case 1:
 			var quality = _palette_analyzer.quality;
@@ -302,16 +301,27 @@ gif_GifEncoder.prototype = {
 		return this.pixels;
 	}
 	,analyze: function(pixels) {
-		this.colorTab = this.palette_analyzer.buildPalette(pixels);
+		var _palette_analyzer = this.palette_analyzer;
+		var _palette_analyzer_enum = this.palette_analyzer_enum;
+		if(this.palette_analyzer_enum._hx_index == 0) {
+			if(pixels.length <= 768 || gif_Tools.histogram(pixels).length <= 256) {
+				_palette_analyzer_enum = gif_GifPaletteAnalyzer.NAIVE256;
+				_palette_analyzer = new gif_Naive256();
+			} else {
+				_palette_analyzer_enum = gif_GifPaletteAnalyzer.NEUQUANT();
+				_palette_analyzer = new gif_NeuQuant();
+			}
+		}
+		this.colorTab = _palette_analyzer.buildPalette(pixels);
 		var k = 0;
-		var _g = 0;
-		var _g1 = this.width * this.height;
-		while(_g < _g1) {
-			var i = _g++;
+		var _g1 = 0;
+		var _g2 = this.width * this.height;
+		while(_g1 < _g2) {
+			var i = _g1++;
 			var r = pixels[k++] & 255;
 			var g = pixels[k++] & 255;
 			var b = pixels[k++] & 255;
-			var index = this.palette_analyzer.map(r,g,b);
+			var index = _palette_analyzer.map(r,g,b);
 			this.indexedPixels[i] = index & 255;
 		}
 	}
@@ -1362,6 +1372,30 @@ gif_NeuQuant.prototype = {
 		_g22[_g14] = _g22[_g14] - 65536 | 0;
 		return bestbiaspos;
 	}
+};
+var gif_Tools = function() {
+};
+gif_Tools.__name__ = true;
+gif_Tools.histogram = function(pixels) {
+	var colorCounts = new haxe_ds_IntMap();
+	var rgb = 0;
+	var uniqueColors = 0;
+	var _g = 0;
+	var _g1 = pixels.length / 3 | 0;
+	while(_g < _g1) {
+		var i = _g++;
+		var pos = i * 3;
+		rgb = pixels[pos] | pixels[pos + 1] | pixels[pos + 2];
+		if(!colorCounts.h.hasOwnProperty(rgb)) {
+			colorCounts.h[rgb] = 1;
+			++uniqueColors;
+		} else {
+			var tmp = rgb;
+			var v = colorCounts.h[tmp] + 1;
+			colorCounts.h[tmp] = v;
+		}
+	}
+	return { colorCounts : colorCounts, length : uniqueColors};
 };
 var haxe_IMap = function() { };
 haxe_IMap.__name__ = true;
