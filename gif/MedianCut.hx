@@ -19,8 +19,9 @@ package gif;
 import haxe.ds.ArraySort;
 import haxe.io.UInt8Array;
 
+/* structure for a cube in color space */
 @:allow(gif.MedianCut)
-class Cube {       /* structure for a cube in color space */
+class Cube {
   var /*word */ lower:Int;         /* one corner's index in histogram     */
   var /*word */ upper:Int;         /* another corner's index in histogram */
   var /*dword*/ count:Int;         /* cube's histogram count              */
@@ -48,15 +49,15 @@ class Cube {       /* structure for a cube in color space */
 class MedianCut implements IPaletteAnalyzer
 {
   static inline var MAXCOLORS:Int = 256;            /* maximum # of output colors */
-  static inline var HSIZE:Int = 32768;          /* size of image histogram    */
+  static inline var HSIZE:Int = 32768;              /* size of image histogram    */
 
   /* Functions for converting between (r,g,b)-colors and 15-bit     */
-  /* colors follow.                                              */
-  static function RGB15(r, g, b):Int return /*(word)*/ (((b) & ~7) << 7) | (((g) & ~7) << 2) | ((r) >> 3);
-  static function RED(x):Int   return /*(byte)*/ (((x) & 31) << 3) & 255;
-  static function GREEN(x):Int return /*(byte)*/ ((((x) >> 5) & 255) << 3) & 255;
-  static function BLUE(x):Int  return /*(byte)*/ ((((x) >> 10) & 255) << 3) & 255;
-  static public function RGB24_TO_RGB15(x):Int {
+  /* colors follow.                                                 */
+  static inline function RGB15(r, g, b):Int return /*(word)*/ (((b) & ~7) << 7) | (((g) & ~7) << 2) | ((r) >> 3);
+  static inline function RED(x):Int         return /*(byte)*/ (((x) & 31) << 3) & 255;
+  static inline function GREEN(x):Int       return /*(byte)*/ ((((x) >> 5) & 255) << 3) & 255;
+  static inline function BLUE(x):Int        return /*(byte)*/ ((((x) >> 10) & 255) << 3) & 255;
+  static inline public function RGB24_TO_RGB15(x):Int {
     var r = (x & 0xFF0000) >> 16;
     var g = (x & 0x00FF00) >> 8;
     var b = (x & 0x0000FF);
@@ -64,13 +65,12 @@ class MedianCut implements IPaletteAnalyzer
   }
 
   var /*cube_t[MAXCOLORS]*/ list:Array<Cube> = [for (c in 0...MAXCOLORS) null];   /* list of cubes              */
-  var longdim:Int;              /* longest dimension of cube  */
-  var /*word[HSIZE]*/ HistPtr:Array<Int> = [for (i in 0...HSIZE) 0];      /* points to colors in "Hist" */
+  var longdim:Int;                                                                /* longest dimension of cube  */
+  var /*word[HSIZE]*/ HistPtr:Array<Int> = [for (i in 0...HSIZE) 0];              /* points to colors in "Hist" */
 
   var histogram:Array<Int> = [for (i in 0...HSIZE) 0];
 
   var maxColors:Int;
-
   var rgbMap:Map<Int, Int>;
   var rgb2index = new Map<Int, Int>(); // maps rgb to index
 
@@ -85,54 +85,48 @@ class MedianCut implements IPaletteAnalyzer
   {
     var pixelCount = Std.int(pixels.length / 3);
     var pixelArray:Array<Int> = [];
+    var pixel15Array:Array<Int> = [];
 
+    // convert to pixel arrays, and populate rgb15 histogram
+    var rgb24 = 0;
+    var rgb15 = 0;
     for (i in 0...pixelCount) {
       var pos = i * 3;
-      pixelArray[i] = (pixels[pos] << 16) | (pixels[pos + 1] << 8) | pixels[pos + 2];
+      rgb24 = (pixels[pos] << 16) | (pixels[pos + 1] << 8) | pixels[pos + 2];
+      pixelArray[i] = rgb24;
+      rgb15 = RGB24_TO_RGB15(pixelArray[i]);
+      histogram[rgb15]++;
+      pixel15Array[i] = rgb15;
     }
-    var rgb = 0;
-    for (i in 0...pixelCount) {
-      rgb = RGB24_TO_RGB15(pixelArray[i]);
-      histogram[rgb]++;
-    }
+
     var colorMap = [for (c in 0...maxColors) [0, 0, 0]];
+
+    // run the medianCut algorithm
+    // numColors will be the size of the quantized palette (might be less than maxColors)
     var numColors = medianCut(histogram, colorMap, maxColors);
 
-    rgbMap = new Map();
+    // map original pixels to indices in the quantized palette
     rgb2index = new Map();
-    var originalUniqueColors = 0;
-    for (i in 0...pixelArray.length) {
-      var rgb15 = MedianCut.RGB24_TO_RGB15(pixelArray[i]);
-      //trace(rgb15);
+    for (i in 0...pixelCount) {
+      rgb15 = pixel15Array[i];
       var colMapIdx = histogram[rgb15];
-      var mappedRgb = colorMap[colMapIdx];
-      var rgb = (mappedRgb[0] << 16) | (mappedRgb[1] << 8) | mappedRgb[2];
-      if (!rgbMap.exists(pixelArray[i])) originalUniqueColors++;
-      rgbMap[pixelArray[i]] = rgb;
       rgb2index[pixelArray[i]] = colMapIdx;
-      //trace(colorMap[colMapIdx]);
     }
 
-    trace(colorMap.length);
-    var colorTab = new UInt8Array(colorMap.length * 3);
-    var paletteUniqueColors = 0;
-    for (i in 0...colorMap.length) {
-      if (colorMap[i].join("") != "000") paletteUniqueColors++;
+    // build palette
+    var colorTab = new UInt8Array(numColors * 3);
+    for (i in 0...numColors) {
       var pos = i * 3;
       colorTab[pos] = colorMap[i][0];
       colorTab[pos + 1] = colorMap[i][1];
       colorTab[pos + 2] = colorMap[i][2];
     }
 
-    trace("unique " + paletteUniqueColors + " / " + originalUniqueColors);
-
     return colorTab;
   }
 
   public function map(r:Int, g:Int, b:Int):Int
   {
-    //var rgb15 = MedianCut.RGB24_TO_RGB15(r << 16 | g << 8 | b);
-    //return rgbMap[rgb15];
     var rgb = r << 16 | g << 8 | b;
     return rgb2index[rgb];
   }
@@ -181,7 +175,7 @@ class MedianCut implements IPaletteAnalyzer
           splitpos = k;
         }
       }
-      if (splitpos == -1)            /* no more cubes to split */
+      if (splitpos == -1)                      /* no more cubes to split */
         break;
 
       /* Must split the cube "splitpos" in list of cubes. Next, find longest
@@ -230,7 +224,7 @@ class MedianCut implements IPaletteAnalyzer
       Shrink(cubeB);
       list[ncubes++] = cubeB;               /* add in new slot */
       //if ((ncubes % 10) == 0)
-      //   fprintf(stderr,".");               /* pacifier        */
+      //   fprintf(stderr,".");             /* pacifier        */
     }
 
     /* We have enough cubes, or we have split all we can. Now compute the color
