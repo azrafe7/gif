@@ -26,7 +26,7 @@ class MedianCutWrapper implements IPaletteAnalyzer {
         }
         var mcq = new MedianCut(pixelArray, pixelCount, 1);
         var colorMap = [for (c in 0...maxColors) [0, 0, 0]];
-        var numColors = MedianCut.medianCut(mcq.histogram, colorMap, maxColors);
+        var numColors = mcq.medianCut(mcq.histogram, colorMap, maxColors);
         //trace(numColors);
         //trace(colorMap);
         //trace(mcq.histogram.copy().splice(0, numColors));

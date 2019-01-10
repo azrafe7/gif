@@ -63,13 +63,13 @@ class MedianCut implements IPaletteAnalyzer
     return RGB15(r, g, b);
   }
 
-  static var /*cube_t[MAXCOLORS]*/ list:Array<Cube> = [for (c in 0...MAXCOLORS) null];   /* list of cubes              */
-  static var longdim:Int;              /* longest dimension of cube  */
-  static var /*word[HSIZE]*/ HistPtr:Array<Int> = [for (i in 0...HSIZE) 0];      /* points to colors in "Hist" */
+  var /*cube_t[MAXCOLORS]*/ list:Array<Cube> = [for (c in 0...MAXCOLORS) null];   /* list of cubes              */
+  var longdim:Int;              /* longest dimension of cube  */
+  var /*word[HSIZE]*/ HistPtr:Array<Int> = [for (i in 0...HSIZE) 0];      /* points to colors in "Hist" */
 
-  public var pixels:Array<Int>;
-  public var width:Int;
-  public var height:Int;
+  var pixels:Array<Int>;
+  var width:Int;
+  var height:Int;
   public var histogram:Array<Int> = [for (i in 0...HSIZE) 0];
 
   public function new(pixels:Array<Int>, width:Int, height:Int) {
@@ -94,7 +94,7 @@ class MedianCut implements IPaletteAnalyzer
     return 0;
   }
 
-  /*word*/ static public function medianCut(/*word[]*/ Hist:Array<Int>, /*byte[][3]*/ ColMap:Array<Array<Int>>, maxcubes:Int):Int
+  /*word*/ public function medianCut(/*word[]*/ Hist:Array<Int>, /*byte[][3]*/ ColMap:Array<Array<Int>>, maxcubes:Int):Int
   {
     /* Accepts "Hist", a 32,768-element array that contains 15-bit color counts
     ** of input image. Uses Heckbert's median-cut algorithm to divide color
@@ -196,7 +196,7 @@ class MedianCut implements IPaletteAnalyzer
     return(/*(word)*/ncubes);
   }
 
-  static function Shrink(cube:Cube):Void
+  function Shrink(cube:Cube):Void
   {
     /* Encloses "cube" with a tight-fitting cube by updating (rmin,gmin,bmin)
     ** and (rmax,gmax,bmax) members of "cube". */
@@ -221,7 +221,7 @@ class MedianCut implements IPaletteAnalyzer
     }
   }
 
-  static function InvMap(/*word **/ Hist:Array<Int>, /*byte[][3]*/ ColMap:Array<Array<Int>>, /*word*/ ncubes:Int):Void
+  function InvMap(/*word **/ Hist:Array<Int>, /*byte[][3]*/ ColMap:Array<Array<Int>>, /*word*/ ncubes:Int):Void
   {
     /* For each cube in list of cubes, computes centroid (average value) of
     ** colors enclosed by that cube, and loads centroids in the color map. Next
@@ -296,7 +296,7 @@ class MedianCut implements IPaletteAnalyzer
     return;
   }
 
-  static function compare(/*const void * */ a1:Int, /*const void * */ a2:Int):Int
+  function compare(/*const void * */ a1:Int, /*const void * */ a2:Int):Int
   {
     /* Called by the sort routine in "MedianCut". Compares two
     ** colors based on the external variable "longdim". */

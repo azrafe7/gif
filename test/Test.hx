@@ -20,7 +20,7 @@ class Test {
         var mcq = new MedianCut(pixels, w, h);
         var maxcubes = 6;
         var colorMap = [for (c in 0...maxcubes) [0, 0, 0]];
-        var numColors = MedianCut.medianCut(mcq.histogram, colorMap, maxcubes);
+        var numColors = mcq.medianCut(mcq.histogram, colorMap, maxcubes);
         trace(numColors);
         trace(colorMap);
         trace(mcq.histogram.copy().splice(0, numColors));
@@ -47,7 +47,7 @@ class Test {
         trace("frames size " + width + "x" + height + " ...");
 
         var output = new haxe.io.BytesOutput();
-        var palette_analyzer = GifPaletteAnalyzer.MEDIANCUT(16);
+        var palette_analyzer = GifPaletteAnalyzer.MEDIANCUT(33);
         var encoder = new gif.GifEncoder(width, height, 0, GifRepeat.Infinite, palette_analyzer);
         var palette_analyzer_enum = palette_analyzer.match(GifPaletteAnalyzer.AUTO) ? " (" + @:privateAccess encoder.palette_analyzer_enum + ")" : "";
 
