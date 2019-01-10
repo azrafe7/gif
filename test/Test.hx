@@ -1,6 +1,7 @@
 
 import gif.GifEncoder;
 import Color;
+import gif.MedianCut;
 
 class Test {
 
@@ -13,11 +14,40 @@ class Test {
 
     static function main() {
 
+        var pixels = [0xFF0000, 0xFFFFFF, 0x00FF00,
+                      0xFF00FF, 0x0000FF, 0xFFFF00];
+        var w = 3, h = 2;
+        var mcq = new MedianCut(pixels, w, h);
+        var maxcubes = 6;
+        var colorMap = [for (c in 0...maxcubes) [0, 0, 0]];
+        var numColors = MedianCut.medianCut(mcq.histogram, colorMap, maxcubes);
+        trace(numColors);
+        trace(colorMap);
+        trace(mcq.histogram.copy().splice(0, numColors));
+        for (i in 0...mcq.histogram.length) if (mcq.histogram[i] > 0) trace(i + ": " + mcq.histogram[i]);
+
+        var map = new Map();
+        for (i in 0...pixels.length) {
+          var rgb15 = MedianCut.RGB24_TO_RGB15(pixels[i]);
+          trace(rgb15);
+          var colMapIdx = mcq.histogram[rgb15];
+          map[pixels[i]] = colorMap[mcq.histogram[rgb15]];
+          //trace(colorMap[colMapIdx]);
+        }
+
+        var s = "";
+        for (k in map.keys()) {
+          s += StringTools.hex(k, 6) + " => " + map[k] + "\n";
+        }
+        trace(s);
+
+        //return;
+
         trace("creating test.gif (" + numFrames + " frames) ...");
         trace("frames size " + width + "x" + height + " ...");
 
         var output = new haxe.io.BytesOutput();
-        var palette_analyzer = GifPaletteAnalyzer.AUTO;
+        var palette_analyzer = GifPaletteAnalyzer.MEDIANCUT(16);
         var encoder = new gif.GifEncoder(width, height, 0, GifRepeat.Infinite, palette_analyzer);
         var palette_analyzer_enum = palette_analyzer.match(GifPaletteAnalyzer.AUTO) ? " (" + @:privateAccess encoder.palette_analyzer_enum + ")" : "";
 
