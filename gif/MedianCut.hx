@@ -66,8 +66,9 @@ class MedianCut implements IPaletteAnalyzer
 
   var /*cube_t[MAXCOLORS]*/ list:Array<Cube> = [for (c in 0...MAXCOLORS) null];   /* list of cubes              */
   var longdim:Int;                                                                /* longest dimension of cube  */
-  var /*word[HSIZE]*/ HistPtr:Array<Int> = [for (i in 0...HSIZE) 0];              /* points to colors in "Hist" */
+  var /*word[HSIZE]*/ histPtr:Array<Int> = [for (i in 0...HSIZE) 0];              /* points to colors in "hist" */
 
+  // see medianCut method
   var histogram:Array<Int> = [for (i in 0...HSIZE) 0];
 
   var maxColors:Int;
@@ -109,8 +110,8 @@ class MedianCut implements IPaletteAnalyzer
     rgb2index = new Map();
     for (i in 0...pixelCount) {
       rgb15 = pixel15Array[i];
-      var colMapIdx = histogram[rgb15];
-      rgb2index[pixelArray[i]] = colMapIdx;
+      var colorMapIdx = histogram[rgb15];
+      rgb2index[pixelArray[i]] = colorMapIdx;
     }
 
     // build palette
@@ -131,43 +132,43 @@ class MedianCut implements IPaletteAnalyzer
     return rgb2index[rgb];
   }
 
-  /*word*/ public function medianCut(/*word[]*/ Hist:Array<Int>, /*byte[][3]*/ ColMap:Array<Array<Int>>, maxcubes:Int):Int
+  /*word*/ public function medianCut(/*word[]*/ hist:Array<Int>, /*byte[][3]*/ colorMap:Array<Array<Int>>, maxCubes:Int):Int
   {
-    /* Accepts "Hist", a 32,768-element array that contains 15-bit color counts
+    /* Accepts "hist", a 32,768-element array that contains 15-bit color counts
     ** of input image. Uses Heckbert's median-cut algorithm to divide color
-    ** space into "maxcubes" cubes, and returns centroid (average value) of each
-    ** cube in ColMap. Hist is also updated so that it functions as an inverse
+    ** space into "maxCubes" cubes, and returns centroid (average value) of each
+    ** cube in colorMap. "hist" is also updated so that it functions as an inverse
     ** color map. MedianCut returns the actual number of cubes, which may be
-    ** less than "maxcubes". */
+    ** less than "maxCubes". */
     var /*byte  */ lr,lg,lb;
     var /*word  */ median,color;
     var /*dword */ count;
-    var /*int   */ level,ncubes,splitpos;
+    var /*int   */ level,nCubes,splitpos;
     var /*void *base */ baseIdx:Int;
     var /*size_t*/ num;
     var /*cube_t*/ cube:Cube = new Cube(), cubeA:Cube, cubeB:Cube;
 
     /* Create the initial cube, which is the whole RGB-cube. */
-    ncubes = 0;
+    nCubes = 0;
     cube.count = 0;
     color = 0;
     for (i in 0...HSIZE){
-      if (Hist[i] != 0){
-        HistPtr[color++] = i;
-        cube.count = cube.count + Hist[i];
+      if (hist[i] != 0){
+        histPtr[color++] = i;
+        cube.count = cube.count + hist[i];
       }
     }
     cube.lower = 0; cube.upper = color-1;
     cube.level = 0;
-    Shrink(cube);
-    list[ncubes++] = cube;
+    shrink(cube);
+    list[nCubes++] = cube;
 
     /* Main loop follows. Search the list of cubes for next cube to split, which
     ** is the lowest level cube. A special case is when a cube has only one
     ** color, so that it cannot be split. */
-    while (ncubes < maxcubes){
+    while (nCubes < maxCubes){
       level = 255; splitpos = -1;
-      for (k in 0...ncubes){
+      for (k in 0...nCubes){
         if (list[k].lower == list[k].upper)
                 {};                            /* single color */
         else if (list[k].level < level){
@@ -195,7 +196,7 @@ class MedianCut implements IPaletteAnalyzer
       num  = /*(size_t)*/ (cube.upper - cube.lower + 1);
 
       //qsort(base, num, width, compare);
-      @:privateAccess ArraySort.rec(HistPtr, compare, baseIdx, num);
+      @:privateAccess ArraySort.rec(histPtr, compare, baseIdx, num);
 
 
       /* Find median by scanning through cube, computing a running sum. When
@@ -204,8 +205,8 @@ class MedianCut implements IPaletteAnalyzer
       var i = cube.lower;
       while (i < cube.upper){
         if (count >= Std.int(cube.count / 2)) break;
-        color = HistPtr[i];
-        count = count + Hist[color];
+        color = histPtr[i];
+        count = count + hist[color];
         i++;
       }
       median = i;
@@ -215,25 +216,25 @@ class MedianCut implements IPaletteAnalyzer
       cubeA = cube.clone(); cubeA.upper = median-1;
       cubeA.count = count;
       cubeA.level = cube.level + 1;
-      Shrink(cubeA);
+      shrink(cubeA);
       list[splitpos] = cubeA;               /* add in old slot */
 
       cubeB = cube.clone(); cubeB.lower = median;
       cubeB.count = cube.count - count;
       cubeB.level = cube.level + 1;
-      Shrink(cubeB);
-      list[ncubes++] = cubeB;               /* add in new slot */
-      //if ((ncubes % 10) == 0)
+      shrink(cubeB);
+      list[nCubes++] = cubeB;               /* add in new slot */
+      //if ((nCubes % 10) == 0)
       //   fprintf(stderr,".");             /* pacifier        */
     }
 
     /* We have enough cubes, or we have split all we can. Now compute the color
     ** map, inverse color map, and return number of colors in color map. */
-    InvMap(Hist, ColMap, ncubes);
-    return(/*(word)*/ncubes);
+    invMap(hist, colorMap, nCubes);
+    return(/*(word)*/nCubes);
   }
 
-  function Shrink(cube:Cube):Void
+  function shrink(cube:Cube):Void
   {
     /* Encloses "cube" with a tight-fitting cube by updating (rmin,gmin,bmin)
     ** and (rmax,gmax,bmax) members of "cube". */
@@ -244,7 +245,7 @@ class MedianCut implements IPaletteAnalyzer
     cube.gmin = 255; cube.gmax = 0;
     cube.bmin = 255; cube.bmax = 0;
     for (i in cube.lower...cube.upper + 1){
-      color = HistPtr[i];
+      color = histPtr[i];
       r = RED(color);
       if (r > cube.rmax) cube.rmax = r;
       if (r < cube.rmin) cube.rmin = r;
@@ -258,7 +259,7 @@ class MedianCut implements IPaletteAnalyzer
     }
   }
 
-  function InvMap(/*word **/ Hist:Array<Int>, /*byte[][3]*/ ColMap:Array<Array<Int>>, /*word*/ ncubes:Int):Void
+  function invMap(/*word **/ hist:Array<Int>, /*byte[][3]*/ colorMap:Array<Array<Int>>, /*word*/ nCubes:Int):Void
   {
     /* For each cube in list of cubes, computes centroid (average value) of
     ** colors enclosed by that cube, and loads centroids in the color map. Next
@@ -271,52 +272,52 @@ class MedianCut implements IPaletteAnalyzer
     var /*float */ dr = 0.0, dg = 0.0, db = 0.0, d = 0.0, dmin = 0.0;
     var /*cube_t*/ cube:Cube;
 
-    for (k in 0...ncubes){
+    for (k in 0...nCubes){
       cube = list[k];
       rsum = gsum = bsum = /*(float)*/0.0;
       for (i in cube.lower...cube.upper + 1){
-        color = HistPtr[i];
+        color = histPtr[i];
         r = RED(color);
-        rsum += /*(float)*/r * /*(float)*/Hist[color];
+        rsum += /*(float)*/r * /*(float)*/hist[color];
         g = GREEN(color);
-        gsum += /*(float)*/g * /*(float)*/Hist[color];
+        gsum += /*(float)*/g * /*(float)*/hist[color];
         b = BLUE(color);
-        bsum += /*(float)*/b * /*(float)*/Hist[color];
+        bsum += /*(float)*/b * /*(float)*/hist[color];
       }
 
       /* Update the color map */
-      ColMap[k][0] = /*(byte)*/Std.int((rsum / /*(float)*/cube.count));
-      ColMap[k][1] = /*(byte)*/Std.int((gsum / /*(float)*/cube.count));
-      ColMap[k][2] = /*(byte)*/Std.int((bsum / /*(float)*/cube.count));
+      colorMap[k][0] = /*(byte)*/Std.int((rsum / /*(float)*/cube.count));
+      colorMap[k][1] = /*(byte)*/Std.int((gsum / /*(float)*/cube.count));
+      colorMap[k][2] = /*(byte)*/Std.int((bsum / /*(float)*/cube.count));
     }
   #if FAST_REMAP
     /* Fast remap: for each color in each cube, load the corresponding slot
-    ** in "Hist" with the centroid of the cube. */
-    for (k in 0...ncubes){
+    ** in "hist" with the centroid of the cube. */
+    for (k in 0...nCubes){
       cube = list[k];
       for (i in cube.lower...cube.upper + 1){
-        color = HistPtr[i];
-        Hist[color] = k;
+        color = histPtr[i];
+        hist[color] = k;
       }
 
       //if ((k % 10) == 0) fprintf(stderr,".");   /* pacifier    */
     }
   #else
-    /* Best remap: for each color in each cube, find entry in ColMap that has
-    ** smallest Euclidian distance from color. Record this in "Hist". */
-    for (k in 0...ncubes){
+    /* Best remap: for each color in each cube, find entry in colorMap that has
+    ** smallest Euclidian distance from color. Record this in "hist". */
+    for (k in 0...nCubes){
       cube = list[k];
       for (i in cube.lower...cube.upper + 1){
-        color = HistPtr[i];
+        color = histPtr[i];
         r = RED(color);  g = GREEN(color); b = BLUE(color);
 
-        /* Search for closest entry in "ColMap" */
+        /* Search for closest entry in "colorMap" */
         //dmin = (float)FLT_MAX;
         dmin = Math.POSITIVE_INFINITY;
-        for (j in 0...ncubes){
-          dr = /*(float)*/ColMap[j][0] - /*(float)*/r;
-          dg = /*(float)*/ColMap[j][1] - /*(float)*/g;
-          db = /*(float)*/ColMap[j][2] - /*(float)*/b;
+        for (j in 0...nCubes){
+          dr = /*(float)*/colorMap[j][0] - /*(float)*/r;
+          dg = /*(float)*/colorMap[j][1] - /*(float)*/g;
+          db = /*(float)*/colorMap[j][2] - /*(float)*/b;
           d = dr*dr + dg*dg + db*db;
           if (d == /*(float)*/0.0){
             index = j; break;
@@ -325,7 +326,7 @@ class MedianCut implements IPaletteAnalyzer
             dmin = d; index = j;
           }
         }
-        Hist[color] = index;
+        hist[color] = index;
       }
       //if ((k % 10) == 0) fprintf(stderr,".");   /* pacifier    */
     }
@@ -333,15 +334,15 @@ class MedianCut implements IPaletteAnalyzer
     return;
   }
 
-  function compare(/*const void * */ a1:Int, /*const void * */ a2:Int):Int
+  function compare(/*const void * */ color1:Int, /*const void * */ color2:Int):Int
   {
     /* Called by the sort routine in "MedianCut". Compares two
     ** colors based on the external variable "longdim". */
-    /*word*/ var color1,color2;
+    ///*word*/ var color1,color2;
     /*byte*/ var C1,C2;
 
-    color1 = /*(word)*(word *)*/a1;
-    color2 = /*(word)*(word *)*/a2;
+    //color1 = /*(word)*(word *)*/a1;
+    //color2 = /*(word)*(word *)*/a2;
     switch (longdim){
 
       case 0:
