@@ -2,7 +2,7 @@ package gif;
 
 import haxe.io.UInt8Array;
 
-interface IPaletteAnalyzer
+interface IPaletteQuantizer
 {
     /* Analyze pixels and return a quantized palette */
     function buildPalette(pixels:UInt8Array):UInt8Array;

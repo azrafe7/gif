@@ -6,7 +6,7 @@ import haxe.io.UInt8Array;
 /** Analyze pixels' colors and build the color table.
     Does no color-quantization/palette-reduction, naively maps different pixel colors to an index
     (assuming unique colors to be <= 256). */
-class Naive256 implements IPaletteAnalyzer
+class Naive256 implements IPaletteQuantizer
 {
     var rgbToIndex:Map<Int, Int>; // maps rgb to quantized palette index
 

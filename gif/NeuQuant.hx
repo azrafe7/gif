@@ -25,7 +25,7 @@ import gif.GifEncoder.GifQuality;
 import haxe.io.Int32Array;
 import haxe.io.UInt8Array;
 
-class NeuQuant implements IPaletteAnalyzer {
+class NeuQuant implements IPaletteQuantizer {
 
     inline static var netsize         : Int = 256; // Number of colours used
 

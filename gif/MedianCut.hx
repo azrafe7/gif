@@ -46,7 +46,7 @@ class Cube {
   }
 }
 
-class MedianCut implements IPaletteAnalyzer
+class MedianCut implements IPaletteQuantizer
 {
   static inline var MAXCOLORS:Int = 256;            /* maximum # of output colors */
   static inline var HSIZE:Int = 32768;              /* size of image histogram    */

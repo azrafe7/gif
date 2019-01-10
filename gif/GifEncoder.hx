@@ -12,7 +12,7 @@ package gif;
 import haxe.io.UInt8Array;
 import haxe.io.BytesOutput;
 
-enum GifPaletteAnalyzer {
+enum GifPaletteQuantizer {
     AUTO;
     NEUQUANT(?quality:GifQuality);
     NAIVE256;
@@ -57,8 +57,8 @@ class GifEncoder {
     //internal
     var started: Bool = false;
     var first_frame: Bool = true;
-    var palette_analyzer: IPaletteAnalyzer = null;
-    var palette_analyzer_enum: GifPaletteAnalyzer = null;
+    var palette_quantizer: IPaletteQuantizer = null;
+    var palette_quantizer_enum: GifPaletteQuantizer = null;
 
     //:todo: error handling could be better - but throw inside of another thread on cpp is too quiet
 
@@ -80,15 +80,15 @@ class GifEncoder {
             Default is 0 (no repeat); -1 means play indefinitely.
             Use GifRepeat for clarity
 
-        palette_analyzer:
-            One of the values in GifPaletteAnalyzer.
+        palette_quantizer:
+            One of the values in GifPalettequantizer.
             Default is AUTO (which will become NAIVE256 if unique colors are less than 256, or NEUQUANT otherwise. */
     public function new(
         _frame_width:Int,
         _frame_height:Int,
         _framerate:Float,
         _repeat:Int = GifRepeat.Infinite,
-        ?_palette_analyzer:GifPaletteAnalyzer
+        ?_palette_quantizer:GifPaletteQuantizer
     ) {
 
         #if sys
@@ -102,22 +102,22 @@ class GifEncoder {
         framerate = _framerate;
         repeat = _repeat;
 
-        palette_analyzer = switch (_palette_analyzer)
+        palette_quantizer = switch (_palette_quantizer)
         {
-            case GifPaletteAnalyzer.AUTO, null: // delay creating actual instance to analyze() (based on pixels data)
-                palette_analyzer_enum = AUTO;
+            case GifPaletteQuantizer.AUTO, null: // delay creating actual instance to analyze() (based on pixels data)
+                palette_quantizer_enum = AUTO;
                 null;
-            case GifPaletteAnalyzer.NEUQUANT(quality):
-                palette_analyzer_enum = NEUQUANT(quality);
+            case GifPaletteQuantizer.NEUQUANT(quality):
+                palette_quantizer_enum = NEUQUANT(quality);
                 new NeuQuant(quality);
-            case GifPaletteAnalyzer.NAIVE256:
-                palette_analyzer_enum = NAIVE256;
+            case GifPaletteQuantizer.NAIVE256:
+                palette_quantizer_enum = NAIVE256;
                 new Naive256();
-            case GifPaletteAnalyzer.MEDIANCUT(maxColors, fastRemap):
-                palette_analyzer_enum = MEDIANCUT(maxColors, fastRemap);
+            case GifPaletteQuantizer.MEDIANCUT(maxColors, fastRemap):
+                palette_quantizer_enum = MEDIANCUT(maxColors, fastRemap);
                 new MedianCut(maxColors);
             default:
-                throw "Invalid PaletteAnalyzer";
+                throw "Invalid Palettequantizer";
         }
 
         pixels = new UInt8Array(width * height * 3);
@@ -227,22 +227,22 @@ class GifEncoder {
 
         function analyze(pixels:UInt8Array) {
 
-            // assign palette analyzer for this frame
-            var _palette_analyzer:IPaletteAnalyzer = palette_analyzer;
-            var _palette_analyzer_enum:GifPaletteAnalyzer = palette_analyzer_enum;
-            if (palette_analyzer_enum.match(GifPaletteAnalyzer.AUTO)) {
+            // assign palette quantizer for this frame
+            var _palette_quantizer:IPaletteQuantizer = palette_quantizer;
+            var _palette_quantizer_enum:GifPaletteQuantizer = palette_quantizer_enum;
+            if (palette_quantizer_enum.match(GifPaletteQuantizer.AUTO)) {
                 if (pixels.length <= 256 * 3 || Tools.histogram(pixels).length <= 256) {
-                    _palette_analyzer_enum = NAIVE256;
-                    _palette_analyzer = new Naive256();
+                    _palette_quantizer_enum = NAIVE256;
+                    _palette_quantizer = new Naive256();
                 } else {
-                    _palette_analyzer_enum = NEUQUANT();
-                    _palette_analyzer = new NeuQuant();
+                    _palette_quantizer_enum = NEUQUANT();
+                    _palette_quantizer = new NeuQuant();
                 }
-                //trace("AUTO => " + _palette_analyzer_enum);
+                //trace("AUTO => " + _palette_quantizer_enum);
             }
 
             // Create palette
-            colorTab = _palette_analyzer.buildPalette(pixels);
+            colorTab = _palette_quantizer.buildPalette(pixels);
 
             // Map image pixels to new palette
             var k:Int = 0;
@@ -250,7 +250,7 @@ class GifEncoder {
                 var r = pixels[k++] & 0xff;
                 var g = pixels[k++] & 0xff;
                 var b = pixels[k++] & 0xff;
-                var index = _palette_analyzer.map(r, g, b);
+                var index = _palette_quantizer.map(r, g, b);
                 indexedPixels[i] = index;
             }
 

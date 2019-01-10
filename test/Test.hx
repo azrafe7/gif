@@ -16,22 +16,22 @@ class Test {
     static function main() {
 
         var testNum = 0;
-        for (palette_analyzer in [
-            GifPaletteAnalyzer.AUTO,
-            GifPaletteAnalyzer.NEUQUANT(GifQuality.Best),
-            GifPaletteAnalyzer.MEDIANCUT(256, false),
-            GifPaletteAnalyzer.NAIVE256])
+        for (palette_quantizer in [
+            GifPaletteQuantizer.AUTO,
+            GifPaletteQuantizer.NEUQUANT(GifQuality.Best),
+            GifPaletteQuantizer.MEDIANCUT(256, false),
+            GifPaletteQuantizer.NAIVE256])
         {
 
             var output = new haxe.io.BytesOutput();
-            var encoder = new gif.GifEncoder(width, height, 0, GifRepeat.Infinite, palette_analyzer);
-            var analyzer_desc = "" + palette_analyzer;
+            var encoder = new gif.GifEncoder(width, height, 0, GifRepeat.Infinite, palette_quantizer);
+            var quantizer_desc = "" + palette_quantizer;
 
-            var filename = filenameTemplate.replace("$0", Std.string(testNum++)).replace("$1", analyzer_desc);
+            var filename = filenameTemplate.replace("$0", Std.string(testNum++)).replace("$1", quantizer_desc);
             trace('creating "' + filename + '" (' + numFrames + ' frames) ...');
             trace("frames size " + width + "x" + height + " ...");
 
-            trace("using palette analyzer " + analyzer_desc + " ...");
+            trace("using palette quantizer " + quantizer_desc + " ...");
 
             var t0 = haxe.Timer.stamp();
 
@@ -51,7 +51,7 @@ class Test {
         #elseif js
             var row = js.Browser.document.getElementById("container");
             var wrapperElement:js.html.DOMElement = cast js.Browser.document.createElement("span");
-            wrapperElement.innerText = analyzer_desc;
+            wrapperElement.innerText = quantizer_desc;
             var imageElement:js.html.ImageElement = cast js.Browser.document.createElement("img");
             imageElement.src = 'data:image/gif;base64,' + haxe.crypto.Base64.encode(bytes);
             imageElement.setAttribute("width", Std.string(width * 3));
