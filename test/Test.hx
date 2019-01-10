@@ -1,7 +1,8 @@
 
 import gif.GifEncoder;
-import Color;
 import gif.MedianCut;
+
+using StringTools;
 
 class Test {
 
@@ -10,49 +11,59 @@ class Test {
     static var delay = .25;
     static var numFrames = 8;
 
-    //static var paletteAnalyzer = GifPaletteAnalyzer.AUTO;
-    static var palette_analyzer = GifPaletteAnalyzer.MEDIANCUT();
-    //static var palette_analyzer = GifPaletteAnalyzer.NEUQUANT();
-    //static var palette_analyzer = GifPaletteAnalyzer.NAIVE256;
-
     static var gradient:Array<Int> = Color.createGradient([0xFF0000, 0xFFFF00, 0xFF0000], [128, 128]);
+    static var filenameTemplate:String = "test_0$0 $1.gif";
 
     static function main() {
 
-        trace("creating test.gif (" + numFrames + " frames) ...");
-        trace("frames size " + width + "x" + height + " ...");
+        var testNum = 0;
+        for (palette_analyzer in [
+            GifPaletteAnalyzer.AUTO,
+            GifPaletteAnalyzer.NEUQUANT(GifQuality.Best),
+            GifPaletteAnalyzer.MEDIANCUT(256, false),
+            GifPaletteAnalyzer.NAIVE256])
+        {
 
-        var output = new haxe.io.BytesOutput();
-        var encoder = new gif.GifEncoder(width, height, 0, GifRepeat.Infinite, palette_analyzer);
-        var palette_analyzer_enum = palette_analyzer.match(GifPaletteAnalyzer.AUTO) ? " (" + @:privateAccess encoder.palette_analyzer_enum + ")" : "";
+            var output = new haxe.io.BytesOutput();
+            var encoder = new gif.GifEncoder(width, height, 0, GifRepeat.Infinite, palette_analyzer);
+            var analyzer_desc = palette_analyzer + (palette_analyzer.match(GifPaletteAnalyzer.AUTO) ? " (" + @:privateAccess encoder.palette_analyzer_enum + ")" : "");
 
-        trace("using palette analyzer " + palette_analyzer + palette_analyzer_enum + " ...");
+            var filename = filenameTemplate.replace("$0", Std.string(testNum++)).replace("$1", analyzer_desc);
+            trace('creating "' + filename + '" (' + numFrames + ' frames) ...');
+            trace("frames size " + width + "x" + height + " ...");
 
-        var t0 = haxe.Timer.stamp();
+            trace("using palette analyzer " + analyzer_desc + " ...");
 
-        encoder.start(output);
+            var t0 = haxe.Timer.stamp();
 
-        //add `numFrames` frames
-        for (i in 0...numFrames) encoder.add(output, make_frame());
+            encoder.start(output);
 
-        encoder.commit(output);
+            //add `numFrames` frames
+            for (i in 0...numFrames) encoder.add(output, make_frame());
 
-        trace("elapsed " + (haxe.Timer.stamp() - t0) + "s");
+            encoder.commit(output);
 
-        var bytes = output.getBytes();
+            trace("elapsed " + (haxe.Timer.stamp() - t0) + "s");
 
-    #if (sys || nodejs)
-        sys.io.File.saveBytes("test.gif", bytes);
-    #elseif js
-        var imageElement :js.html.ImageElement = cast js.Browser.document.createElement("img");
-        js.Browser.document.body.appendChild(imageElement);
-        imageElement.src = 'data:image/gif;base64,' + haxe.crypto.Base64.encode(bytes);
-    #else
-        throw 'Unsupported platform for this test!';
-    #end
+            var bytes = output.getBytes();
 
-        trace("done.");
+        #if (sys || nodejs)
+            sys.io.File.saveBytes(filename, bytes);
+        #elseif js
+            var row = js.Browser.document.getElementById("container");
+            var wrapperElement:js.html.DOMElement = cast js.Browser.document.createElement("span");
+            wrapperElement.innerText = analyzer_desc;
+            var imageElement:js.html.ImageElement = cast js.Browser.document.createElement("img");
+            imageElement.src = 'data:image/gif;base64,' + haxe.crypto.Base64.encode(bytes);
+            imageElement.setAttribute("width", Std.string(width * 3));
+            row.appendChild(wrapperElement);
+            wrapperElement.appendChild(imageElement);
+        #else
+            throw 'Unsupported platform for this test!';
+        #end
 
+            trace("done.\n");
+        }
     } //main
 
     static var count = 0;

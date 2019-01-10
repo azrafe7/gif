@@ -107,31 +107,48 @@ Std.__name__ = true;
 Std.string = function(s) {
 	return js_Boot.__string_rec(s,"");
 };
+var StringTools = function() { };
+StringTools.__name__ = true;
+StringTools.replace = function(s,sub,by) {
+	return s.split(sub).join(by);
+};
 var Test = function() { };
 Test.__name__ = true;
 Test.main = function() {
-	console.log("Test.hx:16:","creating test.gif (" + Test.numFrames + " frames) ...");
-	console.log("Test.hx:17:","frames size " + Test.width + "x" + Test.height + " ...");
-	var output = new haxe_io_BytesOutput();
-	var palette_analyzer = gif_GifPaletteAnalyzer.AUTO;
-	var encoder = new gif_GifEncoder(Test.width,Test.height,0,-1,palette_analyzer);
-	var palette_analyzer_enum = palette_analyzer._hx_index == 0 ? " (" + Std.string(encoder.palette_analyzer_enum) + ")" : "";
-	console.log("Test.hx:24:","using palette analyzer " + Std.string(palette_analyzer) + palette_analyzer_enum + " ...");
-	var t0 = new Date().getTime() / 1000;
-	encoder.start(output);
+	var testNum = 0;
 	var _g = 0;
-	var _g1 = Test.numFrames;
-	while(_g < _g1) {
-		var i = _g++;
-		encoder.add(output,Test.make_frame());
+	var _g1 = [gif_GifPaletteAnalyzer.AUTO,gif_GifPaletteAnalyzer.NEUQUANT(1),gif_GifPaletteAnalyzer.MEDIANCUT(256,false),gif_GifPaletteAnalyzer.NAIVE256];
+	while(_g < _g1.length) {
+		var palette_analyzer = _g1[_g];
+		++_g;
+		var output = new haxe_io_BytesOutput();
+		var encoder = new gif_GifEncoder(Test.width,Test.height,0,-1,palette_analyzer);
+		var analyzer_desc = Std.string(palette_analyzer) + (palette_analyzer._hx_index == 0 ? " (" + Std.string(encoder.palette_analyzer_enum) + ")" : "");
+		var filename = StringTools.replace(StringTools.replace(Test.filenameTemplate,"$0",Std.string(testNum++)),"$1",analyzer_desc);
+		console.log("Test.hx:32:","creating \"" + filename + "\" (" + Test.numFrames + " frames) ...");
+		console.log("Test.hx:33:","frames size " + Test.width + "x" + Test.height + " ...");
+		console.log("Test.hx:35:","using palette analyzer " + analyzer_desc + " ...");
+		var t0 = new Date().getTime() / 1000;
+		encoder.start(output);
+		var _g2 = 0;
+		var _g11 = Test.numFrames;
+		while(_g2 < _g11) {
+			var i = _g2++;
+			encoder.add(output,Test.make_frame());
+		}
+		encoder.commit(output);
+		console.log("Test.hx:46:","elapsed " + (new Date().getTime() / 1000 - t0) + "s");
+		var bytes = output.getBytes();
+		var row = window.document.getElementById("container");
+		var wrapperElement = window.document.createElement("span");
+		wrapperElement.innerText = analyzer_desc;
+		var imageElement = window.document.createElement("img");
+		imageElement.src = "data:image/gif;base64," + haxe_crypto_Base64.encode(bytes);
+		imageElement.setAttribute("width",Std.string(Test.width * 3));
+		row.appendChild(wrapperElement);
+		wrapperElement.appendChild(imageElement);
+		console.log("Test.hx:65:","done.\n");
 	}
-	encoder.commit(output);
-	console.log("Test.hx:35:","elapsed " + (new Date().getTime() / 1000 - t0) + "s");
-	var bytes = output.getBytes();
-	var imageElement = window.document.createElement("img");
-	window.document.body.appendChild(imageElement);
-	imageElement.src = "data:image/gif;base64," + haxe_crypto_Base64.encode(bytes);
-	console.log("Test.hx:49:","done.");
 };
 Test.make_frame = function() {
 	var red = 0;
@@ -158,10 +175,11 @@ Test.make_frame = function() {
 	var frame = { delay : Test.delay, flippedY : false, data : pixels};
 	return frame;
 };
-var gif_GifPaletteAnalyzer = $hxEnums["gif.GifPaletteAnalyzer"] = { __ename__ : true, __constructs__ : ["AUTO","NEUQUANT","NAIVE256"]
+var gif_GifPaletteAnalyzer = $hxEnums["gif.GifPaletteAnalyzer"] = { __ename__ : true, __constructs__ : ["AUTO","NEUQUANT","NAIVE256","MEDIANCUT"]
 	,AUTO: {_hx_index:0,__enum__:"gif.GifPaletteAnalyzer",toString:$estr}
 	,NEUQUANT: ($_=function(quality) { return {_hx_index:1,quality:quality,__enum__:"gif.GifPaletteAnalyzer",toString:$estr}; },$_.__params__ = ["quality"],$_)
 	,NAIVE256: {_hx_index:2,__enum__:"gif.GifPaletteAnalyzer",toString:$estr}
+	,MEDIANCUT: ($_=function(maxColors,fastRemap) { return {_hx_index:3,maxColors:maxColors,fastRemap:fastRemap,__enum__:"gif.GifPaletteAnalyzer",toString:$estr}; },$_.__params__ = ["maxColors","fastRemap"],$_)
 };
 var gif_GifEncoder = function(_frame_width,_frame_height,_framerate,_repeat,_palette_analyzer) {
 	if(_repeat == null) {
@@ -176,7 +194,7 @@ var gif_GifEncoder = function(_frame_width,_frame_height,_framerate,_repeat,_pal
 	this.repeat = -1;
 	this.framerate = 24;
 	this.print = function(v) {
-		console.log("../gif/GifEncoder.hx:92:",v);
+		console.log("../gif/GifEncoder.hx:93:",v);
 	};
 	this.width = _frame_width;
 	this.height = _frame_height;
@@ -194,13 +212,19 @@ var gif_GifEncoder = function(_frame_width,_frame_height,_framerate,_repeat,_pal
 			tmp = pixelsCount <= 256 ? new gif_Naive256() : new gif_NeuQuant();
 			break;
 		case 1:
-			var q = _palette_analyzer.quality;
-			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.NEUQUANT(q);
-			tmp = new gif_NeuQuant(q);
+			var quality = _palette_analyzer.quality;
+			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.NEUQUANT(quality);
+			tmp = new gif_NeuQuant(quality);
 			break;
 		case 2:
 			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.NAIVE256;
 			tmp = new gif_Naive256();
+			break;
+		case 3:
+			var fastRemap = _palette_analyzer.fastRemap;
+			var maxColors = _palette_analyzer.maxColors;
+			this.palette_analyzer_enum = gif_GifPaletteAnalyzer.MEDIANCUT(maxColors,fastRemap);
+			tmp = new gif_MedianCut(maxColors);
 			break;
 		}
 	}
@@ -278,7 +302,7 @@ gif_GifEncoder.prototype = {
 		return this.pixels;
 	}
 	,analyze: function(pixels) {
-		this.colorTab = this.palette_analyzer.analyze(pixels);
+		this.colorTab = this.palette_analyzer.buildPalette(pixels);
 		var k = 0;
 		var _g = 0;
 		var _g1 = this.width * this.height;
@@ -528,13 +552,381 @@ gif_LzwEncoder.prototype = {
 		}
 	}
 };
+var gif_Cube = function() {
+};
+gif_Cube.__name__ = true;
+gif_Cube.prototype = {
+	clone: function() {
+		var cloned = new gif_Cube();
+		cloned.lower = this.lower;
+		cloned.upper = this.upper;
+		cloned.count = this.count;
+		cloned.level = this.upper;
+		cloned.rmin = this.rmin;
+		cloned.rmax = this.rmax;
+		cloned.gmin = this.gmin;
+		cloned.gmax = this.gmax;
+		cloned.bmin = this.bmin;
+		cloned.bmax = this.bmax;
+		return cloned;
+	}
+};
+var gif_MedianCut = function(maxColors,fastRemap) {
+	if(fastRemap == null) {
+		fastRemap = true;
+	}
+	this.rgb2index = new haxe_ds_IntMap();
+	var _g = [];
+	var _g1 = 0;
+	while(_g1 < 32768) {
+		++_g1;
+		_g.push(0);
+	}
+	this.histogram = _g;
+	var _g2 = [];
+	var _g11 = 0;
+	while(_g11 < 32768) {
+		++_g11;
+		_g2.push(0);
+	}
+	this.histPtr = _g2;
+	var _g3 = [];
+	var _g12 = 0;
+	while(_g12 < 256) {
+		++_g12;
+		_g3.push(null);
+	}
+	this.list = _g3;
+	this.maxColors = maxColors != null ? maxColors : 256;
+	if(this.maxColors < 1 || this.maxColors > 256) {
+		throw new js__$Boot_HaxeError("maxColors must be in the range [1-256]");
+	}
+	this.fastRemap = fastRemap;
+};
+gif_MedianCut.__name__ = true;
+gif_MedianCut.__interfaces__ = [gif_IPaletteAnalyzer];
+gif_MedianCut.RGB15 = function(r,g,b) {
+	return (b & -8) << 7 | (g & -8) << 2 | r >> 3;
+};
+gif_MedianCut.RED = function(x) {
+	return (x & 31) << 3 & 255;
+};
+gif_MedianCut.GREEN = function(x) {
+	return (x >> 5 & 255) << 3 & 255;
+};
+gif_MedianCut.BLUE = function(x) {
+	return (x >> 10 & 255) << 3 & 255;
+};
+gif_MedianCut.RGB24_TO_RGB15 = function(x) {
+	var r = (x & 16711680) >> 16;
+	var g = (x & 65280) >> 8;
+	var b = x & 255;
+	return (b & -8) << 7 | (g & -8) << 2 | r >> 3;
+};
+gif_MedianCut.prototype = {
+	buildPalette: function(pixels) {
+		var pixelCount = pixels.length / 3 | 0;
+		var pixelArray = [];
+		var pixel15Array = [];
+		var rgb24 = 0;
+		var rgb15 = 0;
+		var _g = 0;
+		var _g1 = pixelCount;
+		while(_g < _g1) {
+			var i = _g++;
+			var pos = i * 3;
+			rgb24 = pixels[pos] << 16 | pixels[pos + 1] << 8 | pixels[pos + 2];
+			pixelArray[i] = rgb24;
+			var x = pixelArray[i];
+			var r = (x & 16711680) >> 16;
+			var g = (x & 65280) >> 8;
+			var b = x & 255;
+			rgb15 = (b & -8) << 7 | (g & -8) << 2 | r >> 3;
+			this.histogram[rgb15]++;
+			pixel15Array[i] = rgb15;
+		}
+		var _g2 = [];
+		var _g3 = 0;
+		var _g4 = this.maxColors;
+		while(_g3 < _g4) {
+			var c = _g3++;
+			_g2.push([0,0,0]);
+		}
+		var colorMap = _g2;
+		var numColors = this.medianCut(this.histogram,colorMap,this.maxColors,this.fastRemap);
+		this.rgb2index = new haxe_ds_IntMap();
+		var _g5 = 0;
+		var _g6 = pixelCount;
+		while(_g5 < _g6) {
+			var i1 = _g5++;
+			rgb15 = pixel15Array[i1];
+			var colorMapIdx = this.histogram[rgb15];
+			this.rgb2index.h[pixelArray[i1]] = colorMapIdx;
+		}
+		var this1 = new Uint8Array(numColors * 3);
+		var colorTab = this1;
+		var _g7 = 0;
+		var _g8 = numColors;
+		while(_g7 < _g8) {
+			var i2 = _g7++;
+			var pos1 = i2 * 3;
+			colorTab[pos1] = colorMap[i2][0] & 255;
+			colorTab[pos1 + 1] = colorMap[i2][1] & 255;
+			colorTab[pos1 + 2] = colorMap[i2][2] & 255;
+		}
+		return colorTab;
+	}
+	,map: function(r,g,b) {
+		var rgb = r << 16 | g << 8 | b;
+		return this.rgb2index.h[rgb];
+	}
+	,medianCut: function(hist,colorMap,maxCubes,fastRemap) {
+		var lr;
+		var lg;
+		var lb;
+		var median;
+		var count;
+		var level;
+		var splitpos;
+		var baseIdx;
+		var num;
+		var cube = new gif_Cube();
+		var cubeA;
+		var cubeB;
+		var nCubes = 0;
+		cube.count = 0;
+		var color = 0;
+		var _g = 0;
+		while(_g < 32768) {
+			var i = _g++;
+			if(hist[i] != 0) {
+				this.histPtr[color++] = i;
+				cube.count += hist[i];
+			}
+		}
+		cube.lower = 0;
+		cube.upper = color - 1;
+		cube.level = 0;
+		this.shrink(cube);
+		this.list[nCubes++] = cube;
+		while(nCubes < maxCubes) {
+			level = 255;
+			splitpos = -1;
+			var _g1 = 0;
+			var _g2 = nCubes;
+			while(_g1 < _g2) {
+				var k = _g1++;
+				if(this.list[k].lower != this.list[k].upper) {
+					if(this.list[k].level < level) {
+						level = this.list[k].level;
+						splitpos = k;
+					}
+				}
+			}
+			if(splitpos == -1) {
+				break;
+			}
+			cube = this.list[splitpos];
+			lr = cube.rmax - cube.rmin;
+			lg = cube.gmax - cube.gmin;
+			lb = cube.bmax - cube.bmin;
+			if(lr >= lg && lr >= lb) {
+				this.longdim = 0;
+			}
+			if(lg >= lr && lg >= lb) {
+				this.longdim = 1;
+			}
+			if(lb >= lr && lb >= lg) {
+				this.longdim = 2;
+			}
+			baseIdx = cube.lower;
+			num = cube.upper - cube.lower + 1;
+			haxe_ds_ArraySort.rec(this.histPtr,$bind(this,this.compare),baseIdx,num);
+			count = 0;
+			var i1 = cube.lower;
+			while(i1 < cube.upper) {
+				if(count >= (cube.count / 2 | 0)) {
+					break;
+				}
+				color = this.histPtr[i1];
+				count += hist[color];
+				++i1;
+			}
+			median = i1;
+			cubeA = cube.clone();
+			cubeA.upper = median - 1;
+			cubeA.count = count;
+			cubeA.level = cube.level + 1;
+			this.shrink(cubeA);
+			this.list[splitpos] = cubeA;
+			cubeB = cube.clone();
+			cubeB.lower = median;
+			cubeB.count = cube.count - count;
+			cubeB.level = cube.level + 1;
+			this.shrink(cubeB);
+			this.list[nCubes++] = cubeB;
+		}
+		this.invMap(hist,colorMap,nCubes,fastRemap);
+		return nCubes;
+	}
+	,shrink: function(cube) {
+		var r;
+		var g;
+		var b;
+		var color;
+		cube.rmin = 255;
+		cube.rmax = 0;
+		cube.gmin = 255;
+		cube.gmax = 0;
+		cube.bmin = 255;
+		cube.bmax = 0;
+		var _g = cube.lower;
+		var _g1 = cube.upper + 1;
+		while(_g < _g1) {
+			var i = _g++;
+			color = this.histPtr[i];
+			r = (color & 31) << 3 & 255;
+			if(r > cube.rmax) {
+				cube.rmax = r;
+			}
+			if(r < cube.rmin) {
+				cube.rmin = r;
+			}
+			g = (color >> 5 & 255) << 3 & 255;
+			if(g > cube.gmax) {
+				cube.gmax = g;
+			}
+			if(g < cube.gmin) {
+				cube.gmin = g;
+			}
+			b = (color >> 10 & 255) << 3 & 255;
+			if(b > cube.bmax) {
+				cube.bmax = b;
+			}
+			if(b < cube.bmin) {
+				cube.bmin = b;
+			}
+		}
+	}
+	,invMap: function(hist,colorMap,nCubes,fastRemap) {
+		var r = 0.0;
+		var g = 0.0;
+		var b = 0.0;
+		var index = 0;
+		var color = 0;
+		var rsum = 0.0;
+		var gsum = 0.0;
+		var bsum = 0.0;
+		var dr = 0.0;
+		var dg = 0.0;
+		var db = 0.0;
+		var d = 0.0;
+		var dmin = 0.0;
+		var cube;
+		var _g = 0;
+		var _g1 = nCubes;
+		while(_g < _g1) {
+			var k = _g++;
+			cube = this.list[k];
+			bsum = 0.0;
+			gsum = bsum;
+			rsum = gsum;
+			var _g2 = cube.lower;
+			var _g11 = cube.upper + 1;
+			while(_g2 < _g11) {
+				var i = _g2++;
+				color = this.histPtr[i];
+				r = (color & 31) << 3 & 255;
+				rsum += r * hist[color];
+				g = (color >> 5 & 255) << 3 & 255;
+				gsum += g * hist[color];
+				b = (color >> 10 & 255) << 3 & 255;
+				bsum += b * hist[color];
+			}
+			colorMap[k][0] = rsum / cube.count | 0;
+			colorMap[k][1] = gsum / cube.count | 0;
+			colorMap[k][2] = bsum / cube.count | 0;
+		}
+		if(fastRemap) {
+			var _g21 = 0;
+			var _g3 = nCubes;
+			while(_g21 < _g3) {
+				var k1 = _g21++;
+				cube = this.list[k1];
+				var _g22 = cube.lower;
+				var _g31 = cube.upper + 1;
+				while(_g22 < _g31) {
+					var i1 = _g22++;
+					color = this.histPtr[i1];
+					hist[color] = k1;
+				}
+			}
+		} else {
+			var _g23 = 0;
+			var _g32 = nCubes;
+			while(_g23 < _g32) {
+				var k2 = _g23++;
+				cube = this.list[k2];
+				var _g24 = cube.lower;
+				var _g33 = cube.upper + 1;
+				while(_g24 < _g33) {
+					var i2 = _g24++;
+					color = this.histPtr[i2];
+					r = (color & 31) << 3 & 255;
+					g = (color >> 5 & 255) << 3 & 255;
+					b = (color >> 10 & 255) << 3 & 255;
+					dmin = Infinity;
+					var _g25 = 0;
+					var _g34 = nCubes;
+					while(_g25 < _g34) {
+						var j = _g25++;
+						dr = colorMap[j][0] - r;
+						dg = colorMap[j][1] - g;
+						db = colorMap[j][2] - b;
+						d = dr * dr + dg * dg + db * db;
+						if(d == 0.0) {
+							index = j;
+							break;
+						} else if(d < dmin) {
+							dmin = d;
+							index = j;
+						}
+					}
+					hist[color] = index;
+				}
+			}
+		}
+		return;
+	}
+	,compare: function(color1,color2) {
+		var C1;
+		var C2;
+		switch(this.longdim) {
+		case 0:
+			C1 = (color1 & 31) << 3 & 255;
+			C2 = (color2 & 31) << 3 & 255;
+			break;
+		case 1:
+			C1 = (color1 >> 5 & 255) << 3 & 255;
+			C2 = (color2 >> 5 & 255) << 3 & 255;
+			break;
+		case 2:
+			C1 = (color2 >> 10 & 255) << 3 & 255;
+			C2 = (color2 >> 10 & 255) << 3 & 255;
+			break;
+		default:
+			throw new js__$Boot_HaxeError("Unreacheable");
+		}
+		return C1 - C2;
+	}
+};
 var gif_Naive256 = function() {
 	this.rgb2index = new haxe_ds_IntMap();
 };
 gif_Naive256.__name__ = true;
 gif_Naive256.__interfaces__ = [gif_IPaletteAnalyzer];
 gif_Naive256.prototype = {
-	analyze: function(pixels) {
+	buildPalette: function(pixels) {
 		this.rgb2index = new haxe_ds_IntMap();
 		var index2rgb = [];
 		var nextIndex = 0;
@@ -604,7 +996,7 @@ gif_NeuQuant.clamp = function(value,a,b) {
 	}
 };
 gif_NeuQuant.prototype = {
-	analyze: function(pixels) {
+	buildPalette: function(pixels) {
 		this.reset(pixels,pixels.length,this.sampleInterval);
 		return this.process();
 	}
@@ -640,7 +1032,6 @@ gif_NeuQuant.prototype = {
 		return this.colormap_map;
 	}
 	,inxbuild: function() {
-		var i;
 		var j;
 		var smallpos;
 		var smallval;
@@ -648,10 +1039,10 @@ gif_NeuQuant.prototype = {
 		var startpos = 0;
 		var _g = 0;
 		while(_g < 256) {
-			var i1 = _g++;
-			smallpos = i1;
-			smallval = this.network[i1 * 4 + 1];
-			var _g1 = i1 + 1;
+			var i = _g++;
+			smallpos = i;
+			smallval = this.network[i * 4 + 1];
+			var _g1 = i + 1;
 			var _g11 = 256;
 			while(_g1 < _g11) {
 				var j1 = _g1++;
@@ -660,30 +1051,30 @@ gif_NeuQuant.prototype = {
 					smallval = this.network[j1 * 4 + 1];
 				}
 			}
-			if(i1 != smallpos) {
+			if(i != smallpos) {
 				j = this.network[smallpos * 4];
-				this.network[smallpos * 4] = this.network[i1 * 4] | 0;
-				this.network[i1 * 4] = j | 0;
+				this.network[smallpos * 4] = this.network[i * 4] | 0;
+				this.network[i * 4] = j | 0;
 				j = this.network[smallpos * 4 + 1];
-				this.network[smallpos * 4 + 1] = this.network[i1 * 4 + 1] | 0;
-				this.network[i1 * 4 + 1] = j | 0;
+				this.network[smallpos * 4 + 1] = this.network[i * 4 + 1] | 0;
+				this.network[i * 4 + 1] = j | 0;
 				j = this.network[smallpos * 4 + 2];
-				this.network[smallpos * 4 + 2] = this.network[i1 * 4 + 2] | 0;
-				this.network[i1 * 4 + 2] = j | 0;
+				this.network[smallpos * 4 + 2] = this.network[i * 4 + 2] | 0;
+				this.network[i * 4 + 2] = j | 0;
 				j = this.network[smallpos * 4 + 3];
-				this.network[smallpos * 4 + 3] = this.network[i1 * 4 + 3] | 0;
-				this.network[i1 * 4 + 3] = j | 0;
+				this.network[smallpos * 4 + 3] = this.network[i * 4 + 3] | 0;
+				this.network[i * 4 + 3] = j | 0;
 			}
 			if(smallval != previouscol) {
-				this.netindex[previouscol] = startpos + i1 >> 1 | 0;
+				this.netindex[previouscol] = startpos + i >> 1 | 0;
 				var _g2 = previouscol + 1;
 				var _g3 = smallval;
 				while(_g2 < _g3) {
 					var j2 = _g2++;
-					this.netindex[j2] = i1 | 0;
+					this.netindex[j2] = i | 0;
 				}
 				previouscol = smallval;
-				startpos = i1;
+				startpos = i;
 			}
 		}
 		var maxnetpos = 255;
@@ -913,9 +1304,7 @@ gif_NeuQuant.prototype = {
 		return value;
 	}
 	,contest: function(b,g,r) {
-		var i;
 		var dist;
-		var a;
 		var biasdist;
 		var betafreq;
 		var bestd = 2147483647;
@@ -924,8 +1313,8 @@ gif_NeuQuant.prototype = {
 		var bestbiaspos = bestpos;
 		var _g = 0;
 		while(_g < 256) {
-			var i1 = _g++;
-			var i_n = i1 * 4;
+			var i = _g++;
+			var i_n = i * 4;
 			var b_i = i_n;
 			var g_i = i_n + 1;
 			var r_i = i_n + 2;
@@ -950,18 +1339,18 @@ gif_NeuQuant.prototype = {
 			dist = b_a + g_a + r_a;
 			if(dist < bestd) {
 				bestd = dist;
-				bestpos = i1;
+				bestpos = i;
 			}
-			biasdist = dist - (this.bias[i1] >> 12);
+			biasdist = dist - (this.bias[i] >> 12);
 			if(biasdist < bestbiasd) {
 				bestbiasd = biasdist;
-				bestbiaspos = i1;
+				bestbiaspos = i;
 			}
-			betafreq = this.freq[i1] >> 10;
-			var _g1 = i1;
+			betafreq = this.freq[i] >> 10;
+			var _g1 = i;
 			var _g11 = this.freq;
 			_g11[_g1] = _g11[_g1] - betafreq | 0;
-			var _g2 = i1;
+			var _g2 = i;
 			var _g12 = this.bias;
 			_g12[_g2] = _g12[_g2] + (betafreq << 10) | 0;
 		}
@@ -1149,6 +1538,131 @@ haxe_crypto_BaseCode.prototype = {
 		}
 		return out;
 	}
+};
+var haxe_ds_ArraySort = function() { };
+haxe_ds_ArraySort.__name__ = true;
+haxe_ds_ArraySort.rec = function(a,cmp,from,to) {
+	var middle = from + to >> 1;
+	if(to - from < 12) {
+		if(to <= from) {
+			return;
+		}
+		var _g = from + 1;
+		var _g1 = to;
+		while(_g < _g1) {
+			var i = _g++;
+			var j = i;
+			while(j > from) {
+				if(cmp(a[j],a[j - 1]) < 0) {
+					haxe_ds_ArraySort.swap(a,j - 1,j);
+				} else {
+					break;
+				}
+				--j;
+			}
+		}
+		return;
+	}
+	haxe_ds_ArraySort.rec(a,cmp,from,middle);
+	haxe_ds_ArraySort.rec(a,cmp,middle,to);
+	haxe_ds_ArraySort.doMerge(a,cmp,from,middle,to,middle - from,to - middle);
+};
+haxe_ds_ArraySort.doMerge = function(a,cmp,from,pivot,to,len1,len2) {
+	var first_cut;
+	var second_cut;
+	var len11;
+	var len22;
+	if(len1 == 0 || len2 == 0) {
+		return;
+	}
+	if(len1 + len2 == 2) {
+		if(cmp(a[pivot],a[from]) < 0) {
+			haxe_ds_ArraySort.swap(a,pivot,from);
+		}
+		return;
+	}
+	if(len1 > len2) {
+		len11 = len1 >> 1;
+		first_cut = from + len11;
+		second_cut = haxe_ds_ArraySort.lower(a,cmp,pivot,to,first_cut);
+		len22 = second_cut - pivot;
+	} else {
+		len22 = len2 >> 1;
+		second_cut = pivot + len22;
+		first_cut = haxe_ds_ArraySort.upper(a,cmp,from,pivot,second_cut);
+		len11 = first_cut - from;
+	}
+	haxe_ds_ArraySort.rotate(a,cmp,first_cut,pivot,second_cut);
+	var new_mid = first_cut + len22;
+	haxe_ds_ArraySort.doMerge(a,cmp,from,first_cut,new_mid,len11,len22);
+	haxe_ds_ArraySort.doMerge(a,cmp,new_mid,second_cut,to,len1 - len11,len2 - len22);
+};
+haxe_ds_ArraySort.rotate = function(a,cmp,from,mid,to) {
+	if(from == mid || mid == to) {
+		return;
+	}
+	var n = haxe_ds_ArraySort.gcd(to - from,mid - from);
+	while(n-- != 0) {
+		var val = a[from + n];
+		var shift = mid - from;
+		var p1 = from + n;
+		var p2 = from + n + shift;
+		while(p2 != from + n) {
+			a[p1] = a[p2];
+			p1 = p2;
+			if(to - p2 > shift) {
+				p2 += shift;
+			} else {
+				p2 = from + (shift - (to - p2));
+			}
+		}
+		a[p1] = val;
+	}
+};
+haxe_ds_ArraySort.gcd = function(m,n) {
+	while(n != 0) {
+		var t = m % n;
+		m = n;
+		n = t;
+	}
+	return m;
+};
+haxe_ds_ArraySort.upper = function(a,cmp,from,to,val) {
+	var len = to - from;
+	var half;
+	var mid;
+	while(len > 0) {
+		half = len >> 1;
+		mid = from + half;
+		if(cmp(a[val],a[mid]) < 0) {
+			len = half;
+		} else {
+			from = mid + 1;
+			len = len - half - 1;
+		}
+	}
+	return from;
+};
+haxe_ds_ArraySort.lower = function(a,cmp,from,to,val) {
+	var len = to - from;
+	var half;
+	var mid;
+	while(len > 0) {
+		half = len >> 1;
+		mid = from + half;
+		if(cmp(a[mid],a[val]) < 0) {
+			from = mid + 1;
+			len = len - half - 1;
+		} else {
+			len = half;
+		}
+	}
+	return from;
+};
+haxe_ds_ArraySort.swap = function(a,i,j) {
+	var tmp = a[i];
+	a[i] = a[j];
+	a[j] = tmp;
 };
 var haxe_ds_IntMap = function() {
 	this.h = { };
@@ -1392,6 +1906,8 @@ js_Boot.__string_rec = function(o,s) {
 		return String(o);
 	}
 };
+var $fid = 0;
+function $bind(o,m) { if( m == null ) return null; if( m.__id__ == null ) m.__id__ = $fid++; var f; if( o.hx__closures__ == null ) o.hx__closures__ = {}; else f = o.hx__closures__[m.__id__]; if( f == null ) { f = m.bind(o); o.hx__closures__[m.__id__] = f; } return f; }
 if( String.fromCodePoint == null ) String.fromCodePoint = function(c) { return c < 0x10000 ? String.fromCharCode(c) : String.fromCharCode((c>>10)+0xD7C0)+String.fromCharCode((c&0x3FF)+0xDC00); }
 String.__name__ = true;
 Array.__name__ = true;
@@ -1404,10 +1920,13 @@ Test.height = 32;
 Test.delay = .25;
 Test.numFrames = 8;
 Test.gradient = Color.createGradient([16711680,16776960,16711680],[128,128]);
+Test.filenameTemplate = "test_0$0 $1.gif";
 Test.count = 0;
 gif_LzwEncoder.EOF = -1;
 gif_LzwEncoder.BITS = 12;
 gif_LzwEncoder.HSIZE = 5003;
+gif_MedianCut.MAXCOLORS = 256;
+gif_MedianCut.HSIZE = 32768;
 gif_NeuQuant.netsize = 256;
 gif_NeuQuant.prime1 = 499;
 gif_NeuQuant.prime2 = 491;

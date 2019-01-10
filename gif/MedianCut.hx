@@ -107,6 +107,7 @@ class MedianCut implements IPaletteAnalyzer
     // run the medianCut algorithm
     // numColors will be the size of the quantized palette (might be less than maxColors)
     var numColors = medianCut(histogram, colorMap, maxColors, fastRemap);
+    //trace("mapped to " + numColors + " colors");
 
     // map original pixels to indices in the quantized palette
     rgb2index = new Map();

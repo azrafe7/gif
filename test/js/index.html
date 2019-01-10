@@ -1,6 +1,30 @@
 <html>
+  <style>
+  img { 
+      image-rendering: optimizeSpeed;             /* STOP SMOOTHING, GIVE ME SPEED  */
+      image-rendering: -moz-crisp-edges;          /* Firefox                        */
+      image-rendering: -o-crisp-edges;            /* Opera                          */
+      image-rendering: -webkit-optimize-contrast; /* Chrome (and eventually Safari) */
+      image-rendering: pixelated; /* Chrome */
+      image-rendering: optimize-contrast;         /* CSS3 Proposed                  */
+      -ms-interpolation-mode: nearest-neighbor;   /* IE8+                           */
+  }
+  .row {
+    display: flex;
+  }
+  .row img {
+    margin: 6px auto;
+    display: block;
+  }
+  .row span {
+    font-family: monospace;
+    padding: 0 14px;
+    text-align: center;
+  }
+  </style>
   <body>
-    <p>Here should be an animated GIF:</p>
+    <p>Here should be some animated GIFs (css-scaled to 3x):</p>
+    <div id="container" class="row"></div>
     <script src="Test.js"></script>
   </body>
 </html>
