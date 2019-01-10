@@ -11,7 +11,9 @@ class Test {
     static var numFrames = 8;
 
     //static var paletteAnalyzer = GifPaletteAnalyzer.AUTO;
-    static var palette_analyzer = GifPaletteAnalyzer.MEDIANCUT(33);
+    static var palette_analyzer = GifPaletteAnalyzer.MEDIANCUT();
+    //static var palette_analyzer = GifPaletteAnalyzer.NEUQUANT();
+    //static var palette_analyzer = GifPaletteAnalyzer.NAIVE256;
 
     static var gradient:Array<Int> = Color.createGradient([0xFF0000, 0xFFFF00, 0xFF0000], [128, 128]);
 
