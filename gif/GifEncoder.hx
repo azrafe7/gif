@@ -231,14 +231,13 @@ class GifEncoder {
             var _palette_quantizer:IPaletteQuantizer = palette_quantizer;
             var _palette_quantizer_enum:GifPaletteQuantizer = palette_quantizer_enum;
             if (palette_quantizer_enum.match(GifPaletteQuantizer.AUTO)) {
-                if (pixels.length <= 256 * 3 || Tools.histogram(pixels).length <= 256) {
+                if (pixels.length <= 256 * 3 || Tools.rgbHistogram(pixels).length <= 256) {
                     _palette_quantizer_enum = NAIVE256;
                     _palette_quantizer = new Naive256();
                 } else {
                     _palette_quantizer_enum = NEUQUANT();
                     _palette_quantizer = new NeuQuant();
                 }
-                //trace("AUTO => " + _palette_quantizer_enum);
             }
 
             // Create palette
@@ -254,6 +253,8 @@ class GifEncoder {
                 indexedPixels[i] = index;
             }
 
+            //trace("  frame palette quantizer: " + _palette_quantizer_enum);
+            //trace("    unique colors: " + Tools.rgbHistogram(pixels).length + " -> " + Tools.u8Histogram(indexedPixels).length);
         } //analyze
 
     //writers
