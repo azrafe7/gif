@@ -115,29 +115,37 @@ StringTools.replace = function(s,sub,by) {
 var Test = function() { };
 Test.__name__ = true;
 Test.main = function() {
+	var _g = [];
+	var _g1 = 0;
+	var _g2 = Test.numFrames;
+	while(_g1 < _g2) {
+		var i = _g1++;
+		_g.push(Test.make_frame());
+	}
+	var frames = _g;
 	var testNum = 0;
-	var _g = 0;
-	var _g1 = [gif_GifPaletteQuantizer.AUTO,gif_GifPaletteQuantizer.NEUQUANT(10),gif_GifPaletteQuantizer.MEDIANCUT(50,false),gif_GifPaletteQuantizer.NAIVE256];
-	while(_g < _g1.length) {
-		var palette_quantizer = _g1[_g];
-		++_g;
+	var _g3 = 0;
+	var _g4 = [gif_GifPaletteQuantizer.AUTO,gif_GifPaletteQuantizer.NEUQUANT(1),gif_GifPaletteQuantizer.NEUQUANT(10),gif_GifPaletteQuantizer.MEDIANCUT(50,false),gif_GifPaletteQuantizer.NAIVE256];
+	while(_g3 < _g4.length) {
+		var palette_quantizer = _g4[_g3];
+		++_g3;
 		var output = new haxe_io_BytesOutput();
 		var encoder = new gif_GifEncoder(Test.width,Test.height,0,-1,palette_quantizer);
 		var quantizer_desc = "" + Std.string(palette_quantizer);
 		var filename = StringTools.replace(StringTools.replace(Test.filenameTemplate,"$0",Std.string(testNum++)),"$1",quantizer_desc);
-		console.log("Test.hx:31:","creating \"" + filename + "\" (" + Test.numFrames + " frames) ...");
-		console.log("Test.hx:32:","frames size " + Test.width + "x" + Test.height + " ...");
-		console.log("Test.hx:34:","using palette quantizer " + quantizer_desc + " ...");
+		console.log("Test.hx:34:","creating \"" + filename + "\" (" + Test.numFrames + " frames) ...");
+		console.log("Test.hx:35:","frames size " + Test.width + "x" + Test.height + " ...");
+		console.log("Test.hx:37:","using palette quantizer " + quantizer_desc + " ...");
 		var t0 = new Date().getTime() / 1000;
 		encoder.start(output);
-		var _g2 = 0;
-		var _g11 = Test.numFrames;
-		while(_g2 < _g11) {
-			var i = _g2++;
-			encoder.add(output,Test.make_frame());
+		var _g31 = 0;
+		var _g41 = Test.numFrames;
+		while(_g31 < _g41) {
+			var i1 = _g31++;
+			encoder.add(output,frames[i1]);
 		}
 		encoder.commit(output);
-		console.log("Test.hx:45:","elapsed " + (new Date().getTime() / 1000 - t0) + "s");
+		console.log("Test.hx:48:","elapsed " + (new Date().getTime() / 1000 - t0) + "s");
 		var bytes = output.getBytes();
 		var row = window.document.getElementById("container");
 		var wrapperElement = window.document.createElement("span");
@@ -147,7 +155,7 @@ Test.main = function() {
 		imageElement.setAttribute("width",Std.string(Test.width * 3));
 		row.appendChild(wrapperElement);
 		wrapperElement.appendChild(imageElement);
-		console.log("Test.hx:64:","done.\n");
+		console.log("Test.hx:67:","done.\n");
 	}
 };
 Test.make_frame = function() {
@@ -304,7 +312,7 @@ gif_GifEncoder.prototype = {
 		var _palette_quantizer = this.palette_quantizer;
 		var _palette_quantizer_enum = this.palette_quantizer_enum;
 		if(this.palette_quantizer_enum._hx_index == 0) {
-			if(pixels.length <= 768 || gif_Tools.histogram(pixels).length <= 256) {
+			if(pixels.length <= 768 || gif_Tools.rgbHistogram(pixels).length <= 256) {
 				_palette_quantizer_enum = gif_GifPaletteQuantizer.NAIVE256;
 				_palette_quantizer = new gif_Naive256();
 			} else {
@@ -1375,7 +1383,7 @@ gif_NeuQuant.prototype = {
 var gif_Tools = function() {
 };
 gif_Tools.__name__ = true;
-gif_Tools.histogram = function(pixels) {
+gif_Tools.rgbHistogram = function(pixels) {
 	var colorCounts = new haxe_ds_IntMap();
 	var rgb = 0;
 	var uniqueColors = 0;
@@ -1384,7 +1392,7 @@ gif_Tools.histogram = function(pixels) {
 	while(_g < _g1) {
 		var i = _g++;
 		var pos = i * 3;
-		rgb = pixels[pos] | pixels[pos + 1] | pixels[pos + 2];
+		rgb = pixels[pos] << 16 | pixels[pos + 1] << 8 | pixels[pos + 2];
 		if(!colorCounts.h.hasOwnProperty(rgb)) {
 			colorCounts.h[rgb] = 1;
 			++uniqueColors;
@@ -1395,6 +1403,24 @@ gif_Tools.histogram = function(pixels) {
 		}
 	}
 	return { colorCounts : colorCounts, length : uniqueColors};
+};
+gif_Tools.u8Histogram = function(values) {
+	var valueCounts = new haxe_ds_IntMap();
+	var uniqueValues = 0;
+	var _g = 0;
+	while(_g < values.length) {
+		var value = values[_g];
+		++_g;
+		if(!valueCounts.h.hasOwnProperty(value)) {
+			valueCounts.h[value] = 1;
+			++uniqueValues;
+		} else {
+			var tmp = value;
+			var v = valueCounts.h[tmp] + 1;
+			valueCounts.h[tmp] = v;
+		}
+	}
+	return { valueCounts : valueCounts, length : uniqueValues};
 };
 var haxe_IMap = function() { };
 haxe_IMap.__name__ = true;

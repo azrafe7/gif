@@ -20,6 +20,7 @@ class Test {
         var testNum = 0;
         for (palette_quantizer in [
             GifPaletteQuantizer.AUTO,
+            GifPaletteQuantizer.NEUQUANT(GifQuality.Best),
             GifPaletteQuantizer.NEUQUANT(GifQuality.VeryHigh),
             GifPaletteQuantizer.MEDIANCUT(50, false),
             GifPaletteQuantizer.NAIVE256])
