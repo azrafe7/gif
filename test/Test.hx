@@ -15,6 +15,8 @@ class Test {
 
     static function main() {
 
+        var frames = [for (i in 0...numFrames) make_frame()];
+
         var testNum = 0;
         for (palette_quantizer in [
             GifPaletteQuantizer.AUTO,
@@ -38,7 +40,7 @@ class Test {
             encoder.start(output);
 
             //add `numFrames` frames
-            for (i in 0...numFrames) encoder.add(output, make_frame());
+            for (i in 0...numFrames) encoder.add(output, frames[i]);
 
             encoder.commit(output);
 
